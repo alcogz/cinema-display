@@ -656,7 +656,7 @@
     display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,0);
     opacity: 0; pointer-events: none;
-    transition: opacity 0.7s ease;
+    transition: opacity 0.35s ease;
   }
   #ss-trailer-wrap.show {
     opacity: 1; pointer-events: auto;
@@ -1437,22 +1437,23 @@ function ssAdvance() {
 
 async function ssPlayTrailer(key, title) {
   ss.trailerPlaying = true;
-  const wrap  = document.getElementById('ss-trailer-wrap');
-  const frame = document.getElementById('ss-trailer-frame');
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
 
-  // Show movie title above the player
   titleEl.textContent = title || '';
-
-  // Use enablejsapi=1 so we get postMessage events for video end
   frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(location.origin||'file://')}`;
-
   wrap.classList.add('show');
-
-  // Hide poster info while trailer plays
   document.getElementById('ss-info').classList.remove('show');
 
-  // Wait for video to end via postMessage, with a 3-min safety timeout
+  // Preload next poster in background so crossfade is instant when trailer ends
+  const nextIdx = (ss.currentIdx + 1) % ss.movies.length;
+  const nextMovie = ss.movies[nextIdx];
+  if (nextMovie?.poster_path) {
+    const pre = new Image();
+    pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
+  }
+
   await new Promise(resolve => {
     ss._trailerResolve = resolve;
     ss._trailerTimeout = setTimeout(resolve, 3 * 60 * 1000);
@@ -1466,9 +1467,12 @@ function ssStopTrailer() {
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
+
+  // Start fade-out; delay src clear so there's no flash during the transition
   wrap.classList.remove('show');
-  frame.src = '';
+  setTimeout(() => { frame.src = ''; }, 350);
   if (titleEl) titleEl.textContent = '';
+
   clearTimeout(ss._trailerTimeout);
   if (ss._trailerResolve) { ss._trailerResolve(); ss._trailerResolve = null; }
   clearTimeout(ss.trailerTimer);
@@ -1523,26 +1527,23 @@ async function showSSPoster(movie, instant) {
 
   const posterUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
 
+  // Check if image is already cached (preloaded during trailer); if not, await load
   await new Promise(resolve => {
     const img = new Image();
-    img.onload = img.onerror = resolve;
     img.src = posterUrl;
+    if (img.complete) { resolve(); return; }
+    img.onload = img.onerror = resolve;
   });
 
   backLayer.style.backgroundImage = `url(${posterUrl})`;
   infoEl.classList.remove('show');
 
-  if (instant) {
+  // Crossfade: instant on first slide, fast (80ms) on subsequent
+  setTimeout(() => {
     frontLayer.style.opacity = '0';
     backLayer.style.opacity  = '1';
     ss.front = isAFront ? 'b' : 'a';
-  } else {
-    setTimeout(() => {
-      frontLayer.style.opacity = '0';
-      backLayer.style.opacity  = '1';
-      ss.front = isAFront ? 'b' : 'a';
-    }, 200);
-  }
+  }, instant ? 0 : 80);
 
   const genreMap = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
     99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',
