@@ -1409,29 +1409,9 @@ async function startScreensaver() {
   ss.fetchTimer = setInterval(fetchScreensaverPool, 30 * 60 * 1000);
 }
 
-// Run one full slide: show poster → wait 5s → play trailer → on end rotate
-async function runSSSlide(idx) {
-  if (!ss.active) return;
-  const movie = ss.movies[idx];
-  if (!movie) return;
-
-  ssStopTrailer();
-  await showSSPoster(movie, idx === ss.currentIdx && ss.trailerPlaying === false);
-
-  // Start progress bar for the poster phase
-  startSSProgress(ss.POSTER_DURATION);
-
-  // After 5s, try to play trailer
-  ss.trailerTimer = setTimeout(async () => {
-    if (!ss.active) return;
-    if (movie.trailerKey) {
-      await ssPlayTrailer(movie.trailerKey, movie.title);
-      // trailer ended or errored — rotate
-    }
-    // No trailer or trailer done: advance
-    ssAdvance();
-  }, ss.POSTER_DURATION);
-}
+// ── Slide state machine ──────────────────────────────────────────────────────
+// Flow per slide: show poster (5s) → play trailer → hide player → dwell (5s) → advance
+// All driven by plain setTimeouts — no blocking awaits that can mis-fire.
 
 function ssAdvance() {
   if (!ss.active) return;
@@ -1439,74 +1419,98 @@ function ssAdvance() {
   runSSSlide(ss.currentIdx);
 }
 
-async function ssPlayTrailer(key, title) {
+function ssClearTimers() {
+  clearTimeout(ss.trailerTimer);
+  clearTimeout(ss._trailerTimeout);
+  clearTimeout(ss._posterDwellTimeout);
+  ss.trailerTimer = ss._trailerTimeout = ss._posterDwellTimeout = null;
+}
+
+async function runSSSlide(idx) {
+  if (!ss.active) return;
+  const movie = ss.movies[idx];
+  if (!movie) return;
+
+  // Clear any running timers from the previous slide
+  ssClearTimers();
+
+  // Tear down any visible trailer player without touching timers we just cleared
+  ss.trailerPlaying = false;
+  const wrap  = document.getElementById('ss-trailer-wrap');
+  const frame = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
+  wrap.classList.remove('show');
+  frame.src = '';
+  if (titleEl) titleEl.textContent = '';
+
+  await showSSPoster(movie);
+  startSSProgress(ss.POSTER_DURATION);
+
+  // Step 1 — after 5s poster dwell, start trailer (or skip straight to advance)
+  ss.trailerTimer = setTimeout(() => {
+    if (!ss.active) return;
+    if (movie.trailerKey) {
+      ssStartTrailer(movie.trailerKey, movie.title);
+    } else {
+      ssAdvance();
+    }
+  }, ss.POSTER_DURATION);
+}
+
+function ssStartTrailer(key, title) {
+  if (!ss.active) return;
   ss.trailerPlaying = true;
-  ss._trailerStarted = false; // track whether playback actually began
+  ss._trailerStarted = false;
+
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
 
   titleEl.textContent = title || '';
-  // No &origin= param — causes Error 153 on local/downloaded files
   frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1`;
   wrap.classList.add('show');
   document.getElementById('ss-info').classList.remove('show');
 
-  // Preload next poster in background so crossfade is instant when trailer ends
-  const nextIdx = (ss.currentIdx + 1) % ss.movies.length;
-  const nextMovie = ss.movies[nextIdx];
+  // Preload next poster while trailer plays
+  const nextMovie = ss.movies[(ss.currentIdx + 1) % ss.movies.length];
   if (nextMovie?.poster_path) {
     const pre = new Image();
     pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
   }
 
-  // Wait for video to end (state 0) or error — resolved by postMessage listener
-  // Safety timeout: 3 min if postMessage never fires
-  await new Promise(resolve => {
-    ss._trailerResolve = resolve;
-    ss._trailerTimeout = setTimeout(resolve, 3 * 60 * 1000);
-  });
-
-  // Hide the player immediately, reveal the poster behind it
-  ssHideTrailerPlayer();
-
-  // Show the current poster for 5 seconds, then rotate
-  await new Promise(resolve => {
-    ss._posterDwellTimeout = setTimeout(resolve, 5000);
-  });
+  // Safety fallback: advance after 3 min if postMessage never fires
+  ss._trailerTimeout = setTimeout(ssOnTrailerEnd, 3 * 60 * 1000);
 }
 
-// Hide the trailer UI without advancing — poster stays visible behind
-function ssHideTrailerPlayer() {
+function ssOnTrailerEnd() {
+  if (!ss.active) return;
+  clearTimeout(ss._trailerTimeout);
+  ss._trailerTimeout = null;
   ss.trailerPlaying = false;
+
+  // Hide the player, reveal the poster behind it
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
-
   wrap.classList.remove('show');
   setTimeout(() => { frame.src = ''; }, 350);
   if (titleEl) titleEl.textContent = '';
 
-  clearTimeout(ss._trailerTimeout);
-  ss._trailerResolve = null;
-
-  // Show poster info text again during the dwell
+  // Fade info text back in
   setTimeout(() => {
-    if (ss.active && !ss.trailerPlaying) {
-      document.getElementById('ss-info').classList.add('show');
-    }
+    if (ss.active) document.getElementById('ss-info').classList.add('show');
   }, 400);
+
+  // Dwell on poster for 5s then advance
+  ss._posterDwellTimeout = setTimeout(() => {
+    if (ss.active) ssAdvance();
+  }, 5000);
 }
 
 function ssStopTrailer() {
-  // Full stop — cancel any pending dwell and hide player
-  clearTimeout(ss._posterDwellTimeout);
-  clearTimeout(ss._trailerTimeout);
-  if (ss._trailerResolve) { ss._trailerResolve(); ss._trailerResolve = null; }
-  clearTimeout(ss.trailerTimer);
-  ss.trailerTimer = null;
-
+  ssClearTimers();
   ss.trailerPlaying = false;
+
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
@@ -1516,30 +1520,20 @@ function ssStopTrailer() {
 }
 
 function ssSkipTrailer() {
-  clearTimeout(ss._posterDwellTimeout);
   ssStopTrailer();
   ssAdvance();
 }
 
-// Listen for YouTube iframe API postMessage
+// YouTube postMessage — state 1=playing, state 0=ended, onError=blocked
 window.addEventListener('message', e => {
-  if (!ss.active || !ss._trailerResolve) return;
+  if (!ss.active || !ss.trailerPlaying) return;
   try {
     const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
     if (data?.event === 'onStateChange') {
-      // state 1 = playing — note that playback actually started
       if (data.info === 1) ss._trailerStarted = true;
-      // state 0 = ended — only resolve if we saw it playing first
-      if (data.info === 0 && ss._trailerStarted) {
-        ss._trailerResolve();
-        ss._trailerResolve = null;
-      }
+      if (data.info === 0 && ss._trailerStarted) ssOnTrailerEnd();
     }
-    // onError = blocked/unavailable — skip immediately
-    if (data?.event === 'onError') {
-      ss._trailerResolve();
-      ss._trailerResolve = null;
-    }
+    if (data?.event === 'onError') ssOnTrailerEnd();
   } catch(err) {}
 });
 
@@ -1563,7 +1557,7 @@ function stopScreensaver() {
   ss.front = 'a';
 }
 
-async function showSSPoster(movie, instant) {
+async function showSSPoster(movie) {
   const infoEl  = document.getElementById('ss-info');
   const layerA  = document.getElementById('ss-layer-a');
   const layerB  = document.getElementById('ss-layer-b');
@@ -1574,7 +1568,7 @@ async function showSSPoster(movie, instant) {
 
   const posterUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
 
-  // Check if image is already cached (preloaded during trailer); if not, await load
+  // Await load only if not already cached
   await new Promise(resolve => {
     const img = new Image();
     img.src = posterUrl;
@@ -1585,12 +1579,11 @@ async function showSSPoster(movie, instant) {
   backLayer.style.backgroundImage = `url(${posterUrl})`;
   infoEl.classList.remove('show');
 
-  // Crossfade: instant on first slide, fast (80ms) on subsequent
   setTimeout(() => {
     frontLayer.style.opacity = '0';
     backLayer.style.opacity  = '1';
     ss.front = isAFront ? 'b' : 'a';
-  }, instant ? 0 : 80);
+  }, 80);
 
   const genreMap = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
     99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',
@@ -1614,8 +1607,7 @@ async function showSSPoster(movie, instant) {
   document.getElementById('ss-genres-wrap').innerHTML =
     genres.map(g => `<span class="ss-genre">${g}</span>`).join('');
 
-  setTimeout(() => { if (ss.active && !ss.trailerPlaying) infoEl.classList.add('show'); },
-    instant ? 300 : 800);
+  setTimeout(() => { if (ss.active && !ss.trailerPlaying) infoEl.classList.add('show'); }, 800);
 }
 
 function startSSProgress(duration) {
