@@ -697,10 +697,28 @@
   #ss-trailer-footer {
     display: flex; align-items: center; justify-content: space-between;
     padding-top: 10px;
+    gap: 12px;
   }
   #ss-trailer-label {
     font-size: 9px; letter-spacing: 0.32em; text-transform: uppercase;
     color: rgba(201,168,76,0.5);
+    flex-shrink: 0;
+  }
+  /* Countdown bar — drains left to right over TRAILER_MAX_MS */
+  #ss-trailer-countdown {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  #ss-trailer-countdown-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(201,168,76,0.5), rgba(201,168,76,0.9));
+    transform-origin: left;
+    transform: scaleX(1);
+    transition: none;
   }
   #ss-trailer-skip {
     font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
@@ -711,6 +729,7 @@
     transition: color 0.2s, border-color 0.2s;
     -webkit-tap-highlight-color: transparent;
     background: none;
+    flex-shrink: 0;
   }
   #ss-trailer-skip:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.3); }
 </style>
@@ -846,6 +865,7 @@
             src=""></iframe>
           <div id="ss-trailer-footer">
             <span id="ss-trailer-label">Official Trailer</span>
+            <div id="ss-trailer-countdown"><div id="ss-trailer-countdown-fill"></div></div>
             <button id="ss-trailer-skip" onclick="ssSkipTrailer()">Skip ›</button>
           </div>
         </div>
@@ -1457,19 +1477,34 @@ async function runSSSlide(idx) {
   }, ss.POSTER_DURATION);
 }
 
+// Max trailer play time before auto-advancing.
+const TRAILER_MAX_MS = 90 * 1000;
+
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
   ss.trailerPlaying = true;
   ss._trailerStarted = false;
 
-  const wrap    = document.getElementById('ss-trailer-wrap');
-  const frame   = document.getElementById('ss-trailer-frame');
-  const titleEl = document.getElementById('ss-trailer-title');
+  const wrap      = document.getElementById('ss-trailer-wrap');
+  const frame     = document.getElementById('ss-trailer-frame');
+  const titleEl   = document.getElementById('ss-trailer-title');
+  const fill      = document.getElementById('ss-trailer-countdown-fill');
 
   titleEl.textContent = title || '';
   frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1`;
   wrap.classList.add('show');
   document.getElementById('ss-info').classList.remove('show');
+
+  // Animate countdown bar from full → empty over TRAILER_MAX_MS
+  fill.style.transition = 'none';
+  fill.style.transform = 'scaleX(1)';
+  // Force reflow so the reset lands before the animation starts
+  void fill.offsetWidth;
+  fill.style.transition = `transform ${TRAILER_MAX_MS}ms linear`;
+  fill.style.transform = 'scaleX(0)';
+
+  // When the bar hits zero, end the trailer
+  ss._trailerTimeout = setTimeout(ssOnTrailerEnd, TRAILER_MAX_MS);
 
   // Preload next poster while trailer plays
   const nextMovie = ss.movies[(ss.currentIdx + 1) % ss.movies.length];
@@ -1477,54 +1512,9 @@ function ssStartTrailer(key, title) {
     const pre = new Image();
     pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
   }
-
-  // Safety fallback: advance after 3 min if postMessage never fires
-  ss._trailerTimeout = setTimeout(ssOnTrailerEnd, 3 * 60 * 1000);
 }
 
-function ssOnTrailerEnd() {
-  if (!ss.active) return;
-  clearTimeout(ss._trailerTimeout);
-  ss._trailerTimeout = null;
-  ss.trailerPlaying = false;
-
-  // Hide the player, reveal the poster behind it
-  const wrap    = document.getElementById('ss-trailer-wrap');
-  const frame   = document.getElementById('ss-trailer-frame');
-  const titleEl = document.getElementById('ss-trailer-title');
-  wrap.classList.remove('show');
-  setTimeout(() => { frame.src = ''; }, 350);
-  if (titleEl) titleEl.textContent = '';
-
-  // Fade info text back in
-  setTimeout(() => {
-    if (ss.active) document.getElementById('ss-info').classList.add('show');
-  }, 400);
-
-  // Dwell on poster for 5s then advance
-  ss._posterDwellTimeout = setTimeout(() => {
-    if (ss.active) ssAdvance();
-  }, 5000);
-}
-
-function ssStopTrailer() {
-  ssClearTimers();
-  ss.trailerPlaying = false;
-
-  const wrap    = document.getElementById('ss-trailer-wrap');
-  const frame   = document.getElementById('ss-trailer-frame');
-  const titleEl = document.getElementById('ss-trailer-title');
-  wrap.classList.remove('show');
-  setTimeout(() => { frame.src = ''; }, 350);
-  if (titleEl) titleEl.textContent = '';
-}
-
-function ssSkipTrailer() {
-  ssStopTrailer();
-  ssAdvance();
-}
-
-// YouTube postMessage — state 1=playing, state 0=ended, onError=blocked
+// YouTube postMessage — fires if served over https, acts as early-end trigger
 window.addEventListener('message', e => {
   if (!ss.active || !ss.trailerPlaying) return;
   try {
@@ -1536,6 +1526,55 @@ window.addEventListener('message', e => {
     if (data?.event === 'onError') ssOnTrailerEnd();
   } catch(err) {}
 });
+
+function ssOnTrailerEnd() {
+  if (!ss.active || !ss.trailerPlaying) return;
+  clearTimeout(ss._trailerTimeout);
+  ss._trailerTimeout = null;
+  ss.trailerPlaying = false;
+
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const frame   = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
+  const fill    = document.getElementById('ss-trailer-countdown-fill');
+
+  // Stop the countdown bar
+  fill.style.transition = 'none';
+  fill.style.transform = 'scaleX(0)';
+
+  wrap.classList.remove('show');
+  setTimeout(() => { frame.src = ''; }, 350);
+  if (titleEl) titleEl.textContent = '';
+
+  // Fade poster info back in, then advance to next poster after 5s
+  setTimeout(() => {
+    if (ss.active) document.getElementById('ss-info').classList.add('show');
+  }, 400);
+
+  setTimeout(() => {
+    if (ss.active) ssAdvance();
+  }, 5000);
+}
+
+function ssStopTrailer() {
+  ssClearTimers();
+  ss.trailerPlaying = false;
+
+  const fill = document.getElementById('ss-trailer-countdown-fill');
+  if (fill) { fill.style.transition = 'none'; fill.style.transform = 'scaleX(0)'; }
+
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const frame   = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
+  wrap.classList.remove('show');
+  frame.src = '';
+  if (titleEl) titleEl.textContent = '';
+}
+
+function ssSkipTrailer() {
+  ssStopTrailer();
+  ssAdvance();
+}
 
 function stopScreensaver() {
   ss.active = false;
