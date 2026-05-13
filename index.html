@@ -1,3 +1,35 @@
+None selected 
+
+Skip to content
+Using Gmail with screen readers
+
+1 of 2
+HTML Movie File
+Inbox
+
+Alfonse Cognata
+Attachments
+9:34 AM (1 hour ago)
+Sincerely, Alfonse Cognata
+5
+
+Alfonse Cognata
+Attachments
+10:31 AM (9 minutes ago)
+Sincerely, Alfonse Cognata
+
+Alfonse Cognata <alfonse.cognata@gmail.com>
+Attachments
+10:37 AM (3 minutes ago)
+to me
+
+
+
+Sincerely,
+Alfonse Cognata
+ One attachment
+  •  Scanned by Gmail
+1Password menu is available. Press down arrow to select.
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1442,7 +1474,8 @@ async function ssPlayTrailer(key, title) {
   const titleEl = document.getElementById('ss-trailer-title');
 
   titleEl.textContent = title || '';
-  frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(location.origin||'file://')}`;
+  // Note: no &origin= param — it causes Error 153 when opened from local/downloaded files
+  frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1`;
   wrap.classList.add('show');
   document.getElementById('ss-info').classList.remove('show');
 
@@ -1484,13 +1517,18 @@ function ssSkipTrailer() {
   ssAdvance();
 }
 
-// Listen for YouTube iframe API postMessage (video ended = state 0)
+// Listen for YouTube iframe API postMessage
 window.addEventListener('message', e => {
   if (!ss.active || !ss._trailerResolve) return;
   try {
     const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-    // YT sends {event:'onStateChange', info:0} when ended
-    if (data?.event === 'onStateChange' && data?.info === 0) {
+    // state 0 = ended, state -1 = unstarted/error — both should advance
+    if (data?.event === 'onStateChange' && (data?.info === 0 || data?.info === -1)) {
+      ss._trailerResolve();
+      ss._trailerResolve = null;
+    }
+    // onError fires for blocked/unavailable videos — skip immediately
+    if (data?.event === 'onError') {
       ss._trailerResolve();
       ss._trailerResolve = null;
     }
@@ -1896,3 +1934,5 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+index-4.html
+Displaying index-4.html.
