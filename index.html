@@ -904,7 +904,7 @@
 </div>
 
 <!-- Toast -->
-<div id="toast" id="toast"></div>
+<div id="toast"></div>
 
 <!-- Settings -->
 <button id="settings-btn" onclick="showSetup()" title="Settings">⚙</button>
@@ -925,6 +925,25 @@ const state = {
   elapsedInterval: null,
   idle: true,
 };
+
+// ═══════════════════════════════════════
+// BANNER IMAGES — update paths to match your repo
+// ═══════════════════════════════════════
+const BANNER_IMAGES = {
+  'coming-soon': 'https://raw.githubusercontent.com/alcogz/cinema-display/main/coming-soon.png',
+  'now-playing': 'https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png',
+};
+
+function setBanner(type) {
+  const bannerEl = document.getElementById('ss-banner');
+  const imgEl    = document.getElementById('ss-banner-img');
+  const src      = BANNER_IMAGES[type];
+  if (!src) return;
+  imgEl.src = src;
+  imgEl.alt = type === 'now-playing' ? 'Now Playing' : 'Coming Soon';
+  bannerEl.classList.add('show');
+}
+
 
 // ═══════════════════════════════════════
 // SETUP
