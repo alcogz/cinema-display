@@ -681,7 +681,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  /* Outer container clips the YouTube chrome (header + controls) */
+  /* Outer container — clean 16/9 card, clips everything outside */
   #ss-trailer-frame {
     width: 100%;
     aspect-ratio: 16/9;
@@ -694,18 +694,20 @@
     overflow: hidden;
     opacity: 0;
     transition: opacity 0.3s ease;
-    /* Expand height to hide top/bottom YouTube chrome via negative margin on iframe */
     position: relative;
   }
-  /* YT.Player iframe — oversized to crop branding; centered vertically */
-  #ss-trailer-frame iframe {
+  /* Inner wrapper oversized to push YouTube header/controls out of view */
+  #ss-trailer-frame > div {
     position: absolute;
-    top: 50%;
+    top: -60px;
     left: 0;
+    right: 0;
+    bottom: -60px;
+  }
+  /* YT.Player iframe fills the inner wrapper */
+  #ss-trailer-frame iframe {
     width: 100% !important;
-    /* Extra height clips the ~40px header and ~40px control bar */
-    height: calc(100% + 80px) !important;
-    transform: translateY(-50%);
+    height: 100% !important;
     border: none;
     display: block;
   }
@@ -1541,11 +1543,11 @@ function ssStartTrailer(key, title) {
       try { ytPlayer.destroy(); } catch(e) {}
       ytPlayer = null;
     }
-    // YT.Player replaces the target div — reset it first
+    // YT.Player needs a target element — create a fresh inner div to mount into
     const frame = document.getElementById('ss-trailer-frame');
-    frame.innerHTML = '';
+    frame.innerHTML = '<div id="ss-yt-player"></div>';
 
-    ytPlayer = new YT.Player('ss-trailer-frame', {
+    ytPlayer = new YT.Player('ss-yt-player', {
       videoId: key,
       playerVars: {
         autoplay: 1,
