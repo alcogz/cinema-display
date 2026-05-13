@@ -692,6 +692,8 @@
     background: #000;
     display: block;
     overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
   }
   /* The iframe injected by YT.Player */
   #ss-trailer-frame iframe {
@@ -1538,10 +1540,26 @@ function ssStartTrailer(key, title) {
 
     ytPlayer = new YT.Player('ss-trailer-frame', {
       videoId: key,
-      playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        rel: 0,
+        modestbranding: 1,
+        playsinline: 1,
+        fs: 0,
+        iv_load_policy: 3,
+        disablekb: 1,
+      },
       events: {
-        onStateChange: e => { if (e.data === YT.PlayerState.ENDED) ssOnTrailerEnd(); },
-        onError:       ()  => { ssOnTrailerEnd(); }
+        onStateChange: e => {
+          if (e.data === YT.PlayerState.PLAYING) {
+            // Fade in only once playback actually starts — hides loading frame
+            const frame = document.getElementById('ss-trailer-frame');
+            if (frame) frame.style.opacity = '1';
+          }
+          if (e.data === YT.PlayerState.ENDED) ssOnTrailerEnd();
+        },
+        onError: () => { ssOnTrailerEnd(); }
       }
     });
   }
@@ -1579,7 +1597,7 @@ function ssOnTrailerEnd() {
   // Clear player div after fade
   setTimeout(() => {
     const frame = document.getElementById('ss-trailer-frame');
-    if (frame) frame.innerHTML = '';
+    if (frame) { frame.innerHTML = ''; frame.style.opacity = '0'; }
   }, 350);
 
   // Fade poster info back in
@@ -1609,7 +1627,7 @@ function ssStopTrailer() {
 
   if (fill) { fill.style.transition = 'none'; fill.style.transform = 'scaleX(0)'; }
   wrap.classList.remove('show');
-  if (frame) frame.innerHTML = '';
+  if (frame) { frame.innerHTML = ''; frame.style.opacity = '0'; }
   if (titleEl) titleEl.textContent = '';
 }
 
