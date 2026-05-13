@@ -656,31 +656,63 @@
     display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,0);
     opacity: 0; pointer-events: none;
-    transition: opacity 0.8s ease;
+    transition: opacity 0.7s ease;
   }
   #ss-trailer-wrap.show {
     opacity: 1; pointer-events: auto;
-    background: rgba(0,0,0,0.72);
+    background: rgba(0,0,0,0.55);
   }
+
+  /* Card centered over the poster */
+  #ss-trailer-card {
+    position: relative;
+    width: clamp(280px, 52vw, 720px);
+    display: flex; flex-direction: column;
+  }
+
+  #ss-trailer-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(14px, 2vw, 22px);
+    font-weight: 300; letter-spacing: 0.06em;
+    color: var(--cream);
+    text-align: center;
+    padding-bottom: 10px;
+    opacity: 0.85;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
   #ss-trailer-frame {
-    width: min(92vw, 900px);
+    width: 100%;
     aspect-ratio: 16/9;
     border: none;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(201,168,76,0.15);
-    border-radius: 2px;
+    border-radius: 3px;
+    box-shadow:
+      0 0 0 1px rgba(201,168,76,0.2),
+      0 32px 80px rgba(0,0,0,0.95),
+      0 8px 24px rgba(0,0,0,0.8);
     background: #000;
+    display: block;
+  }
+
+  #ss-trailer-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 10px;
+  }
+  #ss-trailer-label {
+    font-size: 9px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: rgba(201,168,76,0.5);
   }
   #ss-trailer-skip {
-    position: absolute; bottom: 24px; right: 24px;
-    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
     color: rgba(255,255,255,0.35); cursor: pointer;
-    padding: 8px 14px;
+    padding: 6px 12px;
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 2px;
     transition: color 0.2s, border-color 0.2s;
     -webkit-tap-highlight-color: transparent;
+    background: none;
   }
-  #ss-trailer-skip:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.3); }
+  #ss-trailer-skip:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.3); }
 </style>
 </head>
 <body>
@@ -804,13 +836,19 @@
           <span id="ss-genres-wrap"></span>
         </div>
       </div>
-      <!-- Trailer player overlay -->
+      <!-- Trailer player overlay — centered card over poster -->
       <div id="ss-trailer-wrap">
-        <iframe id="ss-trailer-frame"
-          allow="autoplay; encrypted-media"
-          allowfullscreen
-          src=""></iframe>
-        <div id="ss-trailer-skip" onclick="ssSkipTrailer()">Skip ›</div>
+        <div id="ss-trailer-card">
+          <div id="ss-trailer-title"></div>
+          <iframe id="ss-trailer-frame"
+            allow="autoplay; encrypted-media"
+            allowfullscreen
+            src=""></iframe>
+          <div id="ss-trailer-footer">
+            <span id="ss-trailer-label">Official Trailer</span>
+            <button id="ss-trailer-skip" onclick="ssSkipTrailer()">Skip ›</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="ss-progress"><div id="ss-progress-fill"></div></div>
@@ -1383,7 +1421,7 @@ async function runSSSlide(idx) {
   ss.trailerTimer = setTimeout(async () => {
     if (!ss.active) return;
     if (movie.trailerKey) {
-      await ssPlayTrailer(movie.trailerKey);
+      await ssPlayTrailer(movie.trailerKey, movie.title);
       // trailer ended or errored — rotate
     }
     // No trailer or trailer done: advance
@@ -1397,10 +1435,14 @@ function ssAdvance() {
   runSSSlide(ss.currentIdx);
 }
 
-async function ssPlayTrailer(key) {
+async function ssPlayTrailer(key, title) {
   ss.trailerPlaying = true;
   const wrap  = document.getElementById('ss-trailer-wrap');
   const frame = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
+
+  // Show movie title above the player
+  titleEl.textContent = title || '';
 
   // Use enablejsapi=1 so we get postMessage events for video end
   frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(location.origin||'file://')}`;
@@ -1421,10 +1463,12 @@ async function ssPlayTrailer(key) {
 
 function ssStopTrailer() {
   ss.trailerPlaying = false;
-  const wrap  = document.getElementById('ss-trailer-wrap');
-  const frame = document.getElementById('ss-trailer-frame');
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const frame   = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
   wrap.classList.remove('show');
   frame.src = '';
+  if (titleEl) titleEl.textContent = '';
   clearTimeout(ss._trailerTimeout);
   if (ss._trailerResolve) { ss._trailerResolve(); ss._trailerResolve = null; }
   clearTimeout(ss.trailerTimer);
