@@ -696,18 +696,22 @@
     transition: opacity 0.3s ease;
     position: relative;
   }
-  /* Inner wrapper oversized to push YouTube header/controls out of view */
-  #ss-trailer-frame > div {
+  /* Inner wrapper fills the container exactly */
+  #ss-yt-player {
     position: absolute;
-    top: -60px;
-    left: 0;
-    right: 0;
-    bottom: -60px;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
   }
-  /* YT.Player iframe fills the inner wrapper */
+  /* iframe sized to 16:9 and centered — crops YouTube chrome top/bottom */
   #ss-trailer-frame iframe {
+    position: absolute;
+    top: 50%;
+    left: 50%;
     width: 100% !important;
-    height: 100% !important;
+    height: 56.25vw !important;
+    max-height: 300% !important;
+    transform: translate(-50%, -50%);
     border: none;
     display: block;
   }
