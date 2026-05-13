@@ -666,7 +666,7 @@
   /* Card centered over the poster */
   #ss-trailer-card {
     position: relative;
-    width: clamp(280px, 52vw, 720px);
+    width: clamp(260px, 46vw, 640px);
     display: flex; flex-direction: column;
   }
 
@@ -681,6 +681,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
+  /* Outer container clips the YouTube chrome (header + controls) */
   #ss-trailer-frame {
     width: 100%;
     aspect-ratio: 16/9;
@@ -690,15 +691,21 @@
       0 32px 80px rgba(0,0,0,0.95),
       0 8px 24px rgba(0,0,0,0.8);
     background: #000;
-    display: block;
     overflow: hidden;
     opacity: 0;
     transition: opacity 0.3s ease;
+    /* Expand height to hide top/bottom YouTube chrome via negative margin on iframe */
+    position: relative;
   }
-  /* The iframe injected by YT.Player */
+  /* YT.Player iframe — oversized to crop branding; centered vertically */
   #ss-trailer-frame iframe {
+    position: absolute;
+    top: 50%;
+    left: 0;
     width: 100% !important;
-    height: 100% !important;
+    /* Extra height clips the ~40px header and ~40px control bar */
+    height: calc(100% + 80px) !important;
+    transform: translateY(-50%);
     border: none;
     display: block;
   }
@@ -1542,7 +1549,7 @@ function ssStartTrailer(key, title) {
       videoId: key,
       playerVars: {
         autoplay: 1,
-        controls: 0,
+        controls: 1,
         rel: 0,
         modestbranding: 1,
         playsinline: 1,
