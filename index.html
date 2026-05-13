@@ -1,35 +1,3 @@
-None selected 
-
-Skip to content
-Using Gmail with screen readers
-
-1 of 2
-HTML Movie File
-Inbox
-
-Alfonse Cognata
-Attachments
-9:34 AM (1 hour ago)
-Sincerely, Alfonse Cognata
-5
-
-Alfonse Cognata
-Attachments
-10:31 AM (9 minutes ago)
-Sincerely, Alfonse Cognata
-
-Alfonse Cognata <alfonse.cognata@gmail.com>
-Attachments
-10:37 AM (3 minutes ago)
-to me
-
-
-
-Sincerely,
-Alfonse Cognata
- One attachment
-  •  Scanned by Gmail
-1Password menu is available. Press down arrow to select.
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1379,6 +1347,10 @@ const ss = {
   active: false,
   front: 'a',
   trailerPlaying: false,
+  _trailerStarted: false,
+  _trailerResolve: null,
+  _trailerTimeout: null,
+  _posterDwellTimeout: null,
   POSTER_DURATION: 5000,   // ms to show poster before trailer starts
 };
 
@@ -1469,12 +1441,13 @@ function ssAdvance() {
 
 async function ssPlayTrailer(key, title) {
   ss.trailerPlaying = true;
+  ss._trailerStarted = false; // track whether playback actually began
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
 
   titleEl.textContent = title || '';
-  // Note: no &origin= param — it causes Error 153 when opened from local/downloaded files
+  // No &origin= param — causes Error 153 on local/downloaded files
   frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1`;
   wrap.classList.add('show');
   document.getElementById('ss-info').classList.remove('show');
@@ -1487,32 +1460,63 @@ async function ssPlayTrailer(key, title) {
     pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
   }
 
+  // Wait for video to end (state 0) or error — resolved by postMessage listener
+  // Safety timeout: 3 min if postMessage never fires
   await new Promise(resolve => {
     ss._trailerResolve = resolve;
     ss._trailerTimeout = setTimeout(resolve, 3 * 60 * 1000);
   });
 
-  ssStopTrailer();
+  // Hide the player immediately, reveal the poster behind it
+  ssHideTrailerPlayer();
+
+  // Show the current poster for 5 seconds, then rotate
+  await new Promise(resolve => {
+    ss._posterDwellTimeout = setTimeout(resolve, 5000);
+  });
 }
 
-function ssStopTrailer() {
+// Hide the trailer UI without advancing — poster stays visible behind
+function ssHideTrailerPlayer() {
   ss.trailerPlaying = false;
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
 
-  // Start fade-out; delay src clear so there's no flash during the transition
   wrap.classList.remove('show');
   setTimeout(() => { frame.src = ''; }, 350);
   if (titleEl) titleEl.textContent = '';
 
   clearTimeout(ss._trailerTimeout);
+  ss._trailerResolve = null;
+
+  // Show poster info text again during the dwell
+  setTimeout(() => {
+    if (ss.active && !ss.trailerPlaying) {
+      document.getElementById('ss-info').classList.add('show');
+    }
+  }, 400);
+}
+
+function ssStopTrailer() {
+  // Full stop — cancel any pending dwell and hide player
+  clearTimeout(ss._posterDwellTimeout);
+  clearTimeout(ss._trailerTimeout);
   if (ss._trailerResolve) { ss._trailerResolve(); ss._trailerResolve = null; }
   clearTimeout(ss.trailerTimer);
   ss.trailerTimer = null;
+
+  ss.trailerPlaying = false;
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const frame   = document.getElementById('ss-trailer-frame');
+  const titleEl = document.getElementById('ss-trailer-title');
+  wrap.classList.remove('show');
+  setTimeout(() => { frame.src = ''; }, 350);
+  if (titleEl) titleEl.textContent = '';
 }
 
 function ssSkipTrailer() {
+  clearTimeout(ss._posterDwellTimeout);
   ssStopTrailer();
   ssAdvance();
 }
@@ -1522,12 +1526,16 @@ window.addEventListener('message', e => {
   if (!ss.active || !ss._trailerResolve) return;
   try {
     const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-    // state 0 = ended, state -1 = unstarted/error — both should advance
-    if (data?.event === 'onStateChange' && (data?.info === 0 || data?.info === -1)) {
-      ss._trailerResolve();
-      ss._trailerResolve = null;
+    if (data?.event === 'onStateChange') {
+      // state 1 = playing — note that playback actually started
+      if (data.info === 1) ss._trailerStarted = true;
+      // state 0 = ended — only resolve if we saw it playing first
+      if (data.info === 0 && ss._trailerStarted) {
+        ss._trailerResolve();
+        ss._trailerResolve = null;
+      }
     }
-    // onError fires for blocked/unavailable videos — skip immediately
+    // onError = blocked/unavailable — skip immediately
     if (data?.event === 'onError') {
       ss._trailerResolve();
       ss._trailerResolve = null;
@@ -1538,6 +1546,7 @@ window.addEventListener('message', e => {
 function stopScreensaver() {
   ss.active = false;
   clearTimeout(ss.trailerTimer);
+  clearTimeout(ss._posterDwellTimeout);
   clearInterval(ss.fetchTimer);
   clearInterval(ss.progressTimer);
   ss.trailerTimer = ss.fetchTimer = ss.progressTimer = null;
@@ -1934,5 +1943,3 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-index-4.html
-Displaying index-4.html.
