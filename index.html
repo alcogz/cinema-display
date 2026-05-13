@@ -684,13 +684,20 @@
   #ss-trailer-frame {
     width: 100%;
     aspect-ratio: 16/9;
-    border: none;
     border-radius: 3px;
     box-shadow:
       0 0 0 1px rgba(201,168,76,0.2),
       0 32px 80px rgba(0,0,0,0.95),
       0 8px 24px rgba(0,0,0,0.8);
     background: #000;
+    display: block;
+    overflow: hidden;
+  }
+  /* The iframe injected by YT.Player */
+  #ss-trailer-frame iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none;
     display: block;
   }
 
@@ -859,10 +866,7 @@
       <div id="ss-trailer-wrap">
         <div id="ss-trailer-card">
           <div id="ss-trailer-title"></div>
-          <iframe id="ss-trailer-frame"
-            allow="autoplay; encrypted-media"
-            allowfullscreen
-            src=""></iframe>
+          <div id="ss-trailer-frame"></div>
           <div id="ss-trailer-footer">
             <span id="ss-trailer-label">Official Trailer</span>
             <div id="ss-trailer-countdown"><div id="ss-trailer-countdown-fill"></div></div>
@@ -1478,32 +1482,42 @@ async function runSSSlide(idx) {
 }
 
 // Max trailer play time before auto-advancing.
-const TRAILER_MAX_MS = 90 * 1000;
+// ── YouTube IFrame Player API ────────────────────────────────────────────────
+let ytApiReady = false;
+let ytPlayer   = null;
+
+// Load the API script once; calls window.onYouTubeIframeAPIReady when done
+(function() {
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+})();
+
+window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
+
+// Fallback max duration if ENDED event never fires (e.g. network issue)
+const TRAILER_MAX_MS = 2.5 * 60 * 1000;
 
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
   ss.trailerPlaying = true;
-  ss._trailerStarted = false;
 
-  const wrap      = document.getElementById('ss-trailer-wrap');
-  const frame     = document.getElementById('ss-trailer-frame');
-  const titleEl   = document.getElementById('ss-trailer-title');
-  const fill      = document.getElementById('ss-trailer-countdown-fill');
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const titleEl = document.getElementById('ss-trailer-title');
+  const fill    = document.getElementById('ss-trailer-countdown-fill');
 
   titleEl.textContent = title || '';
-  frame.src = `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&enablejsapi=1`;
   wrap.classList.add('show');
   document.getElementById('ss-info').classList.remove('show');
 
-  // Animate countdown bar from full → empty over TRAILER_MAX_MS
+  // Countdown bar — visual fallback indicator
   fill.style.transition = 'none';
   fill.style.transform = 'scaleX(1)';
-  // Force reflow so the reset lands before the animation starts
   void fill.offsetWidth;
   fill.style.transition = `transform ${TRAILER_MAX_MS}ms linear`;
   fill.style.transform = 'scaleX(0)';
 
-  // When the bar hits zero, end the trailer
+  // Fallback timeout in case ENDED never fires
   ss._trailerTimeout = setTimeout(ssOnTrailerEnd, TRAILER_MAX_MS);
 
   // Preload next poster while trailer plays
@@ -1512,20 +1526,35 @@ function ssStartTrailer(key, title) {
     const pre = new Image();
     pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
   }
-}
 
-// YouTube postMessage — fires if served over https, acts as early-end trigger
-window.addEventListener('message', e => {
-  if (!ss.active || !ss.trailerPlaying) return;
-  try {
-    const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-    if (data?.event === 'onStateChange') {
-      if (data.info === 1) ss._trailerStarted = true;
-      if (data.info === 0 && ss._trailerStarted) ssOnTrailerEnd();
+  function createYTPlayer() {
+    if (ytPlayer) {
+      try { ytPlayer.destroy(); } catch(e) {}
+      ytPlayer = null;
     }
-    if (data?.event === 'onError') ssOnTrailerEnd();
-  } catch(err) {}
-});
+    // YT.Player replaces the target div — reset it first
+    const frame = document.getElementById('ss-trailer-frame');
+    frame.innerHTML = '';
+
+    ytPlayer = new YT.Player('ss-trailer-frame', {
+      videoId: key,
+      playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onStateChange: e => { if (e.data === YT.PlayerState.ENDED) ssOnTrailerEnd(); },
+        onError:       ()  => { ssOnTrailerEnd(); }
+      }
+    });
+  }
+
+  if (ytApiReady) {
+    createYTPlayer();
+  } else {
+    // Poll until API is ready (usually < 500ms)
+    const poll = setInterval(() => {
+      if (ytApiReady) { clearInterval(poll); if (ss.trailerPlaying) createYTPlayer(); }
+    }, 100);
+  }
+}
 
 function ssOnTrailerEnd() {
   if (!ss.active || !ss.trailerPlaying) return;
@@ -1533,25 +1562,33 @@ function ssOnTrailerEnd() {
   ss._trailerTimeout = null;
   ss.trailerPlaying = false;
 
-  const wrap    = document.getElementById('ss-trailer-wrap');
-  const frame   = document.getElementById('ss-trailer-frame');
-  const titleEl = document.getElementById('ss-trailer-title');
+  if (ytPlayer) {
+    try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e) {}
+    ytPlayer = null;
+  }
+
   const fill    = document.getElementById('ss-trailer-countdown-fill');
+  const wrap    = document.getElementById('ss-trailer-wrap');
+  const titleEl = document.getElementById('ss-trailer-title');
 
-  // Stop the countdown bar
   fill.style.transition = 'none';
-  fill.style.transform = 'scaleX(0)';
-
+  fill.style.transform  = 'scaleX(0)';
   wrap.classList.remove('show');
-  setTimeout(() => { frame.src = ''; }, 350);
   if (titleEl) titleEl.textContent = '';
 
-  // Fade poster info back in, then advance to next poster after 5s
+  // Clear player div after fade
+  setTimeout(() => {
+    const frame = document.getElementById('ss-trailer-frame');
+    if (frame) frame.innerHTML = '';
+  }, 350);
+
+  // Fade poster info back in
   setTimeout(() => {
     if (ss.active) document.getElementById('ss-info').classList.add('show');
   }, 400);
 
-  setTimeout(() => {
+  // Dwell on poster 5s then rotate
+  ss._posterDwellTimeout = setTimeout(() => {
     if (ss.active) ssAdvance();
   }, 5000);
 }
@@ -1560,14 +1597,19 @@ function ssStopTrailer() {
   ssClearTimers();
   ss.trailerPlaying = false;
 
-  const fill = document.getElementById('ss-trailer-countdown-fill');
-  if (fill) { fill.style.transition = 'none'; fill.style.transform = 'scaleX(0)'; }
+  if (ytPlayer) {
+    try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e) {}
+    ytPlayer = null;
+  }
 
+  const fill    = document.getElementById('ss-trailer-countdown-fill');
   const wrap    = document.getElementById('ss-trailer-wrap');
   const frame   = document.getElementById('ss-trailer-frame');
   const titleEl = document.getElementById('ss-trailer-title');
+
+  if (fill) { fill.style.transition = 'none'; fill.style.transform = 'scaleX(0)'; }
   wrap.classList.remove('show');
-  frame.src = '';
+  if (frame) frame.innerHTML = '';
   if (titleEl) titleEl.textContent = '';
 }
 
