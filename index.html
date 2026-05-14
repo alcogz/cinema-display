@@ -33,6 +33,20 @@
     cursor: none;
   }
 
+  /* ─── PORTRAIT ROTATION ───
+     TV is physically portrait (rotated). We rotate the app
+     -90deg so content displays upright on the screen. */
+  #app-rotate {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    transform-origin: center center;
+    overflow: hidden;
+  }
+
   /* ─── SETUP OVERLAY ─── */
   #setup {
     position: fixed; inset: 0; z-index: 1000;
@@ -164,7 +178,7 @@
 
   /* ─── MAIN DISPLAY ─── */
   #app {
-    width: 100vw; height: 100vh;
+    width: 100%; height: 100%;
     display: flex; align-items: stretch;
     opacity: 0; transition: opacity 1s;
     position: relative; overflow: hidden;
@@ -757,6 +771,7 @@
 </style>
 </head>
 <body>
+<div id="app-rotate">
 
 <!-- ══════════════════════════════════════════
      SETUP SCREEN
@@ -2045,5 +2060,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('app').style.display = 'none';
 });
 </script>
+</div><!-- #app-rotate -->
 </body>
 </html>
