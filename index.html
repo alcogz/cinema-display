@@ -782,7 +782,7 @@
       <div class="setup-grid three">
         <div class="field">
           <label>Device IP Address</label>
-          <input id="ks-ip" type="text" placeholder="192.168.1.x" value="">
+          <input id="ks-ip" type="text" placeholder="192.168.1.x" value="192.168.1.224">
         </div>
         <div class="field">
           <label>Port (default 10000)</label>
@@ -822,7 +822,7 @@
       <div class="setup-grid">
         <div class="field">
           <label>TMDB API Key (v3)</label>
-          <input id="tmdb-key" type="text" placeholder="your_tmdb_api_key_here">
+          <input id="tmdb-key" type="text" placeholder="your_tmdb_api_key_here" value="d80a82b6d2e0c2691244e61aa4ba084b">
         </div>
         <div class="field" style="justify-content:flex-end;">
           <label>&nbsp;</label>
@@ -839,7 +839,7 @@
       <div class="setup-grid">
         <div class="field">
           <label>Proxy Base URL</label>
-          <input id="proxy-url" type="text" placeholder="http://192.168.1.x:8080" value="">
+          <input id="proxy-url" type="text" placeholder="http://192.168.1.x:8080" value="http://192.168.1.41:8080">
         </div>
         <div class="field" style="justify-content:flex-end;">
           <label>&nbsp;</label>
@@ -1132,14 +1132,17 @@ function loadConfig() {
   try {
     const s = localStorage.getItem('cinemaDisplayConfig');
     const saved = s ? JSON.parse(s) : {};
-    // Merge: saved values win over defaults
-    const cfg = Object.assign({}, DEFAULTS, saved);
-    document.getElementById('ks-ip').value     = cfg.ksIP;
-    document.getElementById('ks-port').value   = cfg.ksPort;
-    document.getElementById('plex-url').value  = cfg.plexURL;
-    document.getElementById('plex-token').value= cfg.plexToken;
-    document.getElementById('tmdb-key').value  = cfg.tmdbKey;
-    document.getElementById('proxy-url').value = cfg.proxyURL;
+    // Only use saved value if it's non-empty; otherwise fall back to DEFAULTS
+    const cfg = {};
+    for (const key of Object.keys(DEFAULTS)) {
+      cfg[key] = (saved[key] && saved[key].toString().trim()) ? saved[key] : DEFAULTS[key];
+    }
+    document.getElementById('ks-ip').value      = cfg.ksIP;
+    document.getElementById('ks-port').value    = cfg.ksPort;
+    document.getElementById('plex-url').value   = cfg.plexURL;
+    document.getElementById('plex-token').value = cfg.plexToken;
+    document.getElementById('tmdb-key').value   = cfg.tmdbKey;
+    document.getElementById('proxy-url').value  = cfg.proxyURL;
   } catch(e){}
 }
 
