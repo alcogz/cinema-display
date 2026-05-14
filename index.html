@@ -212,16 +212,17 @@
   /* ─── MAIN CONTENT ROW — poster left, info right ─── */
   #np-content {
     position: relative; z-index: 10;
-    flex: 1; display: flex; align-items: stretch; overflow: hidden;
-    padding: 0 clamp(16px, 3vw, 40px) clamp(12px, 2vh, 24px);
-    gap: clamp(12px, 2vw, 28px);
+    flex: 1; display: flex; align-items: center; overflow: hidden;
+    padding: 0 clamp(20px, 4vw, 50px) clamp(16px, 3vh, 32px);
+    gap: clamp(16px, 3vw, 36px);
     min-height: 0;
   }
 
   /* ─── POSTER AREA ─── */
   #poster-area {
-    flex: 0 0 auto; width: 36%;
+    flex: 0 0 auto; width: 44%;
     display: flex; align-items: center; justify-content: center;
+    align-self: stretch;
   }
   .poster-frame {
     position: relative; width: 100%; aspect-ratio: 2/3;
