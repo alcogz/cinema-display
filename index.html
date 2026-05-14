@@ -194,45 +194,54 @@
     pointer-events: none;
   }
 
-  /* ─── NOW PLAYING BANNER — full width top ─── */
-  #np-banner-wrap {
+  /* ─── TOP BAR: times + banner ─── */
+  #np-topbar {
     position: relative; z-index: 10; flex-shrink: 0;
-    width: 100%; display: flex; justify-content: center; align-items: center;
-    padding: clamp(8px, 1.5vh, 20px) clamp(20px, 8vw, 120px) clamp(4px, 0.8vh, 10px);
-    opacity: 0; transform: translateY(-10px);
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: clamp(6px,1.2vh,14px) clamp(12px,3vw,36px);
+    gap: 8px;
+  }
+  .np-time-block {
+    display: flex; flex-direction: column; align-items: center;
+    flex-shrink: 0; min-width: clamp(60px,10vw,100px);
+  }
+  .np-time-label {
+    font-size: clamp(7px,0.85vw,10px); letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--gold-dim); margin-bottom: 2px;
+  }
+  .np-time-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(14px,2vw,22px); font-weight: 300; color: var(--cream);
+  }
+  #np-banner-wrap {
+    flex: 1; display: flex; justify-content: center; align-items: center;
+    opacity: 0; transform: translateY(-8px);
     transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1);
   }
   #np-banner-wrap.visible { opacity: 1; transform: none; }
   #np-banner-img {
-    width: 100%; max-width: clamp(200px, 75%, 560px);
+    width: 100%; max-width: clamp(160px,55%,400px);
     height: auto; display: block;
-    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.8));
+    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.9));
   }
 
-  /* ─── MAIN CONTENT ROW — poster left, info right ─── */
-  #np-content {
+  /* ─── POSTER — fills middle ─── */
+  #poster-area {
     position: relative; z-index: 10;
-    flex: 1; display: flex; align-items: center; overflow: hidden;
-    padding: 0 clamp(20px, 4vw, 50px) clamp(16px, 3vh, 32px);
-    gap: clamp(16px, 3vw, 36px);
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 0 clamp(16px,4vw,50px);
     min-height: 0;
   }
-
-  /* ─── POSTER AREA ─── */
-  #poster-area {
-    flex: 0 0 auto; width: 44%;
-    display: flex; align-items: center; justify-content: center;
-    align-self: stretch;
-  }
   .poster-frame {
-    position: relative; width: 100%; aspect-ratio: 2/3;
-    border: 1px solid rgba(201,168,76,0.3);
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.8), 0 20px 60px rgba(0,0,0,0.8);
+    position: relative; height: 100%; aspect-ratio: 2/3;
+    max-width: 100%;
+    border: 1px solid rgba(201,168,76,0.25);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.8), 0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(201,168,76,0.05);
     overflow: hidden; border-radius: 2px;
   }
   .poster-frame::before {
     content: ''; position: absolute; inset: 0; z-index: 3;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.3) 100%);
+    background: linear-gradient(to bottom, rgba(255,255,255,0.03) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.4) 100%);
     pointer-events: none;
   }
   #poster-img {
@@ -244,7 +253,7 @@
   .poster-placeholder {
     width: 100%; height: 100%; display: none;
     flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-    background: linear-gradient(135deg, #111008 0%, #0d0c08 100%);
+    background: linear-gradient(135deg, #111008, #0d0c08);
   }
   .poster-placeholder.visible { display: flex; }
   .poster-placeholder .film-icon { font-size: 32px; opacity: 0.2; }
@@ -258,109 +267,77 @@
     width: 0%; transition: width 30s linear;
   }
 
-  /* ─── INFO AREA ─── */
+  /* ─── INFO STRIP — below poster ─── */
   #info-area {
-    flex: 1; display: flex; flex-direction: column; justify-content: center;
-    padding: clamp(6px, 1vh, 12px) clamp(8px, 1.5vw, 20px) clamp(6px, 1vh, 12px) 0;
-    gap: 0; overflow: hidden; min-width: 0;
+    position: relative; z-index: 10; flex-shrink: 0;
+    width: 100%; display: flex; align-items: flex-start;
+    padding: clamp(8px,1.4vh,16px) clamp(16px,4vw,50px);
+    gap: clamp(10px,2vw,24px);
+    border-top: 1px solid rgba(201,168,76,0.12);
+    background: rgba(0,0,0,0.3);
+    opacity: 0; transform: translateY(10px);
+    transition: opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s;
   }
-  .now-playing-label {
-    font-size: clamp(7px, 0.9vw, 10px); letter-spacing: 0.4em; font-weight: 500;
-    color: var(--gold); text-transform: uppercase;
-    display: flex; align-items: center; gap: 7px;
-    margin-bottom: clamp(6px, 1vh, 14px);
-    opacity: 0; transform: translateY(10px); transition: all var(--transition);
-  }
-  .now-playing-label.visible { opacity: 1; transform: none; }
-  .live-dot {
-    width: 5px; height: 5px; border-radius: 50%; background: var(--gold);
-    animation: live-pulse 2s infinite; flex-shrink: 0;
-  }
-  @keyframes live-pulse {
-    0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(201,168,76,0.4); }
-    50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(201,168,76,0); }
+  #info-area.visible { opacity: 1; transform: none; }
+  #info-left {
+    flex-shrink: 0; min-width: 0;
   }
   #movie-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(18px, 3vw, 48px);
+    font-size: clamp(16px,2.8vw,38px);
     font-weight: 300; line-height: 1; color: var(--cream);
-    margin-bottom: clamp(3px, 0.5vh, 8px);
-    opacity: 0; transform: translateY(14px); transition: all var(--transition) 0.08s;
-    overflow: hidden;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: clamp(120px, 28vw, 280px);
+    opacity: 0; transform: translateY(8px);
+    transition: all var(--transition) 0.08s;
   }
   #movie-title.visible { opacity: 1; transform: none; }
   #movie-title em { font-style: italic; color: rgba(240,232,216,0.6); }
   #movie-year {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(11px, 1.4vw, 16px); font-weight: 300; font-style: italic;
-    color: var(--gold-dim); letter-spacing: 0.1em;
-    margin-bottom: clamp(8px, 1.2vh, 18px);
-    opacity: 0; transform: translateY(10px); transition: all var(--transition) 0.14s;
+    font-size: clamp(10px,1.3vw,14px); font-style: italic;
+    color: var(--gold-dim); letter-spacing: 0.1em; margin-top: 2px;
+    opacity: 0; transition: opacity var(--transition) 0.14s;
   }
-  #movie-year.visible { opacity: 1; transform: none; }
-  .divider {
-    width: 40px; height: 1px; background: linear-gradient(90deg, var(--gold), transparent);
-    margin-bottom: clamp(8px, 1.2vh, 18px);
-    opacity: 0; transition: opacity var(--transition) 0.2s;
+  #movie-year.visible { opacity: 1; }
+  #info-right {
+    flex: 1; display: flex; flex-direction: column; gap: clamp(4px,0.7vh,8px); min-width: 0;
   }
-  .divider.visible { opacity: 1; }
   #ratings-row {
-    display: flex; align-items: center; gap: clamp(8px, 1vw, 14px);
-    margin-bottom: clamp(8px, 1.2vh, 18px);
-    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.22s; flex-wrap: wrap;
+    display: flex; align-items: center; gap: clamp(6px,1vw,14px); flex-wrap: wrap;
+    opacity: 0; transition: opacity var(--transition) 0.22s;
   }
-  #ratings-row.visible { opacity: 1; transform: none; }
-  .rating-badge { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .rating-badge .source { font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.2em; color: #6a5a40; text-transform: uppercase; }
+  #ratings-row.visible { opacity: 1; }
+  .rating-badge { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .rating-badge .source { font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.2em; color: #6a5a40; text-transform: uppercase; }
   .rating-badge .score {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(14px, 1.9vw, 24px); font-weight: 400; color: var(--cream); line-height: 1;
+    font-size: clamp(13px,1.8vw,22px); font-weight: 400; color: var(--cream); line-height: 1;
   }
   .rating-badge .score.gold { color: var(--gold); }
-  .rating-badge .stars { color: var(--gold); font-size: clamp(7px, 0.9vw, 10px); letter-spacing: 1px; }
-  .rating-sep { width: 1px; height: 26px; background: var(--border); }
-  .mpaa-badge {
-    padding: 2px 6px; border: 1px solid rgba(201,168,76,0.3);
-    font-size: clamp(8px, 1vw, 11px); font-weight: 600; color: var(--cream); border-radius: 2px;
-  }
+  .rating-badge .stars { color: var(--gold); font-size: clamp(6px,0.8vw,9px); letter-spacing: 1px; }
+  .rating-sep { width: 1px; height: 22px; background: var(--border); }
+  .mpaa-badge { padding: 2px 5px; border: 1px solid rgba(201,168,76,0.3); font-size: clamp(7px,0.9vw,10px); font-weight: 600; color: var(--cream); border-radius: 2px; }
   #genres {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    margin-bottom: clamp(8px, 1.2vh, 18px);
-    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.28s;
+    display: flex; gap: 4px; flex-wrap: wrap; align-items: center;
+    opacity: 0; transition: opacity var(--transition) 0.28s;
   }
-  #genres.visible { opacity: 1; transform: none; }
-  .genre-tag {
-    padding: 2px 7px; border: 1px solid var(--border);
-    font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.16em; text-transform: uppercase;
-    color: #8a7a60; border-radius: 2px;
-  }
-  #times-row {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 1px; background: var(--border);
-    margin-bottom: clamp(8px, 1vh, 14px);
-    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.32s;
-  }
-  #times-row.visible { opacity: 1; transform: none; }
-  .time-cell { background: var(--panel); padding: clamp(5px, 0.8vh, 10px) clamp(7px, 1vw, 12px); display: flex; flex-direction: column; gap: 2px; }
-  .time-cell .tc-label { font-size: clamp(6px, 0.75vw, 8px); letter-spacing: 0.24em; color: #6a5a40; text-transform: uppercase; }
-  .time-cell .tc-value {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(11px, 1.6vw, 18px); font-weight: 300; color: var(--cream);
-  }
-  .time-cell .tc-value.running { color: var(--gold); animation: flicker 4s infinite; }
-  @keyframes flicker { 0%,90%,100%{opacity:1} 92%{opacity:0.85} }
+  #genres.visible { opacity: 1; }
+  .genre-tag { padding: 1px 6px; border: 1px solid var(--border); font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.14em; text-transform: uppercase; color: #8a7a60; border-radius: 2px; }
   #source-row {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 8px;
     opacity: 0; transition: opacity var(--transition) 0.36s;
   }
   #source-row.visible { opacity: 1; }
-  .source-indicator {
-    display: flex; align-items: center; gap: 6px;
-    font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.16em; color: #5a4a30; text-transform: uppercase;
-  }
+  .source-indicator { display: flex; align-items: center; gap: 5px; font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.15em; color: #5a4a30; text-transform: uppercase; }
   .source-indicator .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
   .source-indicator .dot.idle { background: #4a3a20; }
 
+  /* Hidden compat elements */
+  .now-playing-label { display: none; }
+  .divider { display: none; }
+  #times-row { display: none; }
+  #np-content { display: none; }
   #trailer-btn { display: none; }
     border-style: solid;
     border-width: 5px 0 5px 9px;
@@ -829,15 +806,22 @@
     <div id="ss-progress"><div id="ss-progress-fill"></div></div>
   </div>
 
-  <!-- Now Playing Banner — full width across top -->
-  <div id="np-banner-wrap">
-    <img id="np-banner-img" src="https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png" alt="Now Playing">
+  <!-- Top bar: start time | NOW PLAYING banner | end time -->
+  <div id="np-topbar">
+    <div class="np-time-block" id="np-time-left">
+      <span class="np-time-label">Start Time</span>
+      <span class="np-time-value" id="time-start">—</span>
+    </div>
+    <div id="np-banner-wrap">
+      <img id="np-banner-img" src="https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png" alt="Now Playing">
+    </div>
+    <div class="np-time-block" id="np-time-right">
+      <span class="np-time-label">End Time</span>
+      <span class="np-time-value" id="time-end">—</span>
+    </div>
   </div>
 
-  <!-- Main content row -->
-  <div id="np-content">
-
-  <!-- Poster -->
+  <!-- Poster — fills most of the screen -->
   <div id="poster-area">
     <div class="poster-frame" id="poster-frame">
       <div class="poster-placeholder" id="poster-placeholder">
@@ -849,67 +833,60 @@
     </div>
   </div>
 
-  <!-- Info -->
+  <!-- Details strip — below poster -->
   <div id="info-area">
-    <div class="now-playing-label" id="np-label">
-      <span class="live-dot"></span>
-      Now Playing
-      <span style="margin-left:auto;font-size:8px;color:#4a3a20;" id="source-tag">—</span>
+    <div id="info-left">
+      <div id="movie-title">—</div>
+      <div id="movie-year">—</div>
     </div>
-
-    <div id="movie-title">—</div>
-    <div id="movie-year">—</div>
-    <div class="divider" id="divider"></div>
-
-    <div id="ratings-row">
-      <div class="rating-badge">
-        <span class="source">TMDB</span>
-        <span class="score gold" id="score-tmdb">—</span>
-        <span class="stars" id="stars-tmdb"></span>
+    <div id="info-right">
+      <div id="ratings-row">
+        <div class="rating-badge">
+          <span class="source">TMDB</span>
+          <span class="score gold" id="score-tmdb">—</span>
+          <span class="stars" id="stars-tmdb"></span>
+        </div>
+        <div class="rating-sep"></div>
+        <div class="rating-badge">
+          <span class="source">Rating</span>
+          <span class="score" id="score-mpaa">—</span>
+        </div>
+        <div class="rating-sep"></div>
+        <div class="rating-badge">
+          <span class="source">Runtime</span>
+          <span class="score" id="score-runtime">—</span>
+        </div>
+        <div class="rating-sep"></div>
+        <div id="genres"></div>
       </div>
-      <div class="rating-sep"></div>
-      <div class="rating-badge">
-        <span class="source">Rating</span>
-        <span class="score" id="score-mpaa" style="letter-spacing:0.06em;">—</span>
-      </div>
-      <div class="rating-sep"></div>
-      <div class="rating-badge">
-        <span class="source">Runtime</span>
-        <span class="score" id="score-runtime">—</span>
-      </div>
-    </div>
-
-    <div id="genres"></div>
-
-    <div id="times-row">
-      <div class="time-cell">
-        <span class="tc-label">Started</span>
-        <span class="tc-value" id="time-start">—</span>
-      </div>
-      <div class="time-cell">
-        <span class="tc-label">Elapsed</span>
-        <span class="tc-value running" id="time-elapsed">—</span>
-      </div>
-      <div class="time-cell">
-        <span class="tc-label">Ends At</span>
-        <span class="tc-value" id="time-end">—</span>
-      </div>
-    </div>
-
-    <div id="source-row">
-      <div class="source-indicator">
-        <span class="dot" id="ks-live-dot"></span>
-        Kaleidescape
-      </div>
-      <div style="width:1px;height:12px;background:var(--border);"></div>
-      <div class="source-indicator">
-        <span class="dot idle" id="plex-live-dot"></span>
-        Plex
+      <div id="source-row">
+        <div class="source-indicator">
+          <span class="dot" id="ks-live-dot"></span>
+          Kaleidescape
+        </div>
+        <div style="width:1px;height:10px;background:var(--border);"></div>
+        <div class="source-indicator">
+          <span class="dot idle" id="plex-live-dot"></span>
+          Plex
+        </div>
+        <div style="margin-left:auto;">
+          <span class="tc-label" style="font-size:7px;letter-spacing:0.2em;color:#5a4a30;text-transform:uppercase;">Elapsed</span>
+          <span class="np-time-value" id="time-elapsed" style="font-size:14px;color:var(--gold);display:block;">—</span>
+        </div>
       </div>
     </div>
   </div>
 
-  </div><!-- #np-content -->
+  <!-- hidden elements kept for JS compatibility -->
+  <div style="display:none">
+    <div id="np-label"><span class="live-dot"></span><span id="source-tag"></span></div>
+    <div id="divider"></div>
+    <div id="times-row">
+      <div class="time-cell"><span class="tc-label"></span><span class="tc-value running" id="time-elapsed-hidden"></span></div>
+    </div>
+  </div>
+
+  </div><!-- #np-content removed, kept for structure -->
 </div>
 
 <!-- Trailer modal -->
@@ -1792,7 +1769,7 @@ function updatePoster(path) {
 }
 
 function animateInfoOut() {
-  ['np-banner-wrap','np-label','movie-title','movie-year','divider','ratings-row','genres','times-row','source-row'].forEach(id => {
+  ['np-banner-wrap','np-label','movie-title','movie-year','divider','ratings-row','genres','times-row','source-row','info-area'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('visible');
   });
@@ -1823,14 +1800,12 @@ function animateInfoIn(d, source) {
 
   // Staggered reveal
   setTimeout(() => document.getElementById('np-banner-wrap').classList.add('visible'), 0);
-  setTimeout(() => document.getElementById('np-label').classList.add('visible'), 60);
-  setTimeout(() => titleEl.classList.add('visible'), 120);
-  setTimeout(() => document.getElementById('movie-year').classList.add('visible'), 180);
-  setTimeout(() => document.getElementById('divider').classList.add('visible'), 220);
+  setTimeout(() => document.getElementById('info-area').classList.add('visible'), 100);
+  setTimeout(() => titleEl.classList.add('visible'), 150);
+  setTimeout(() => document.getElementById('movie-year').classList.add('visible'), 200);
   setTimeout(() => document.getElementById('ratings-row').classList.add('visible'), 280);
   setTimeout(() => genreEl.classList.add('visible'), 360);
-  setTimeout(() => document.getElementById('times-row').classList.add('visible'), 440);
-  setTimeout(() => document.getElementById('source-row').classList.add('visible'), 500);
+  setTimeout(() => document.getElementById('source-row').classList.add('visible'), 420);
 }
 
 function updateElapsed() {
@@ -1839,13 +1814,18 @@ function updateElapsed() {
   const elapsedMs = now - state.startTime;
   const endTime = new Date(state.startTime.getTime() + state.runtimeMs);
 
-  document.getElementById('time-start').textContent = formatTime(state.startTime);
-  document.getElementById('time-elapsed').textContent = formatDuration(elapsedMs);
-  document.getElementById('time-end').textContent = formatTime(endTime);
+  const startEl   = document.getElementById('time-start');
+  const endEl     = document.getElementById('time-end');
+  const elapsedEl = document.getElementById('time-elapsed');
 
-  // Progress
+  if (startEl)   startEl.textContent   = formatTime(state.startTime);
+  if (endEl)     endEl.textContent     = formatTime(endTime);
+  if (elapsedEl) elapsedEl.textContent = formatDuration(elapsedMs);
+
+  // Progress bar
   const pct = Math.min(100, (elapsedMs / state.runtimeMs) * 100);
-  document.getElementById('progress-bar').style.width = pct + '%';
+  const bar = document.getElementById('progress-bar');
+  if (bar) bar.style.width = pct + '%';
 }
 
 function updateProgressBar() {
