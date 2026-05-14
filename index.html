@@ -832,7 +832,20 @@
     </div>
 
     <div class="setup-section">
-      <div class="setup-section-label">CORS Proxy (required for local APIs)</div>
+      <div class="setup-section-label">Kaleidescape Bridge — Tunnel URL</div>
+      <div class="setup-grid">
+        <div class="field">
+          <label>Cloudflare Tunnel URL (from StartCinemaProxy)</label>
+          <input id="tunnel-url" type="text" placeholder="https://xxxx.trycloudflare.com">
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <div style="font-size:10px;color:#4a3a2a;letter-spacing:0.12em;padding:10px 0;line-height:1.6;">
+            Run <code style="color:#7a6a50;">StartCinemaProxy.bat</code> — copy the <code style="color:#7a6a50;">https://</code> URL it shows here.
+          </div>
+        </div>
+      </div>
+    </div>
       <div class="setup-grid">
         <div class="field">
           <label>Proxy Base URL</label>
@@ -1036,12 +1049,13 @@ function setBanner(type) {
 // ═══════════════════════════════════════
 function launch() {
   const cfg = {
-    ksIP: document.getElementById('ks-ip').value.trim(),
-    ksPort: document.getElementById('ks-port').value.trim() || '10000',
-    plexURL: document.getElementById('plex-url').value.trim().replace(/\/$/, ''),
+    ksIP:      document.getElementById('ks-ip').value.trim(),
+    ksPort:    document.getElementById('ks-port').value.trim() || '10000',
+    plexURL:   document.getElementById('plex-url').value.trim().replace(/\/$/, ''),
     plexToken: document.getElementById('plex-token').value.trim(),
-    tmdbKey: document.getElementById('tmdb-key').value.trim(),
-    proxyURL: document.getElementById('proxy-url').value.trim().replace(/\/$/, ''),
+    tmdbKey:   document.getElementById('tmdb-key').value.trim(),
+    proxyURL:  document.getElementById('proxy-url').value.trim().replace(/\/$/, ''),
+    tunnelURL: document.getElementById('tunnel-url').value.trim().replace(/\/$/, ''),
   };
   state.config = cfg;
 
@@ -1118,12 +1132,13 @@ function saveConfig(cfg) {
 // HARDCODED DEFAULTS — pre-fill setup fields
 // ═══════════════════════════════════════
 const DEFAULTS = {
-  ksIP:     '192.168.1.224',
-  ksPort:   '10000',
-  proxyURL: 'http://192.168.1.41:8080',
-  plexURL:  '',
-  plexToken:'',
-  tmdbKey:  'd80a82b6d2e0c2691244e61aa4ba084b',
+  ksIP:      '192.168.1.224',
+  ksPort:    '10000',
+  proxyURL:  'http://192.168.1.41:8080',
+  tunnelURL: '',
+  plexURL:   '',
+  plexToken: '',
+  tmdbKey:   'd80a82b6d2e0c2691244e61aa4ba084b',
 };
 
 function loadConfig() {
@@ -1148,6 +1163,7 @@ function loadConfig() {
     document.getElementById('plex-token').value = cfg.plexToken;
     document.getElementById('tmdb-key').value   = cfg.tmdbKey;
     document.getElementById('proxy-url').value  = cfg.proxyURL;
+    document.getElementById('tunnel-url').value = cfg.tunnelURL || '';
   } catch(e){}
 }
 
@@ -1232,12 +1248,10 @@ async function pollKaleidescape() {
   const cfg = state.config;
   if (!cfg.ksIP) { console.log('[KS] No ksIP configured'); return null; }
 
-  // Bridge runs HTTPS on port 8765 to avoid mixed-content blocks from GitHub Pages
-  let bridgeHost = 'https://192.168.1.41:8765'; // hardcoded fallback
-  if (cfg.proxyURL) {
-    const m = cfg.proxyURL.match(/^https?:\/\/([^:/]+)/);
-    if (m) bridgeHost = `https://${m[1]}:8765`;
-  }
+  // Bridge URL — use tunnelURL if set (for GitHub Pages https), otherwise local
+  const bridgeHost = cfg.tunnelURL
+    ? cfg.tunnelURL.replace(/\/$/, '')
+    : 'http://192.168.1.41:8765';
 
   console.log('[KS] Polling bridge:', bridgeHost + '/now-playing');
 
