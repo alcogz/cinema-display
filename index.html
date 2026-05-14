@@ -556,9 +556,8 @@
   /* ─── SCREENSAVER TRAILER PLAYER ─── */
   #ss-trailer-wrap {
     position: absolute; inset: 0; z-index: 20;
-    display: flex; align-items: center; justify-content: center;
-    /* Push card down to sit in the poster area, below the banner */
-    padding-top: clamp(80px, 18vh, 180px);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: clamp(60px, 12vh, 140px);
     background: rgba(0,0,0,0);
     opacity: 0; pointer-events: none;
     transition: opacity 0.35s ease;
