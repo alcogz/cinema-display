@@ -165,10 +165,19 @@
 
   /* ─── MAIN DISPLAY ─── */
   #app {
-    width: 100%; height: 100%;
+    /* Portrait rotation — swaps width/height and rotates 90deg
+       so a landscape TV displays in portrait orientation.
+       Change to rotate(90deg) if content appears upside-down. */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
     display: flex; align-items: stretch;
     opacity: 0; transition: opacity 1s;
-    position: relative; overflow: hidden;
+    overflow: hidden;
   }
   #app.visible { opacity: 1; }
 
