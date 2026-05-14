@@ -664,6 +664,8 @@
   #ss-trailer-wrap {
     position: absolute; inset: 0; z-index: 20;
     display: flex; align-items: center; justify-content: center;
+    /* Push card down to sit in the poster area, below the banner */
+    padding-top: clamp(80px, 18vh, 180px);
     background: rgba(0,0,0,0);
     opacity: 0; pointer-events: none;
     transition: opacity 0.35s ease;
@@ -1114,18 +1116,30 @@ function saveConfig(cfg) {
   try { localStorage.setItem('cinemaDisplayConfig', JSON.stringify(cfg)); } catch(e){}
 }
 
+// ═══════════════════════════════════════
+// HARDCODED DEFAULTS — pre-fill setup fields
+// ═══════════════════════════════════════
+const DEFAULTS = {
+  ksIP:     '192.168.1.224',
+  ksPort:   '10000',
+  proxyURL: 'http://192.168.1.41:8080',
+  plexURL:  '',
+  plexToken:'',
+  tmdbKey:  'd80a82b6d2e0c2691244e61aa4ba084b',
+};
+
 function loadConfig() {
   try {
     const s = localStorage.getItem('cinemaDisplayConfig');
-    if (s) {
-      const cfg = JSON.parse(s);
-      document.getElementById('ks-ip').value = cfg.ksIP || '';
-      document.getElementById('ks-port').value = cfg.ksPort || '10000';
-      document.getElementById('plex-url').value = cfg.plexURL || '';
-      document.getElementById('plex-token').value = cfg.plexToken || '';
-      document.getElementById('tmdb-key').value = cfg.tmdbKey || '';
-      document.getElementById('proxy-url').value = cfg.proxyURL || '';
-    }
+    const saved = s ? JSON.parse(s) : {};
+    // Merge: saved values win over defaults
+    const cfg = Object.assign({}, DEFAULTS, saved);
+    document.getElementById('ks-ip').value     = cfg.ksIP;
+    document.getElementById('ks-port').value   = cfg.ksPort;
+    document.getElementById('plex-url').value  = cfg.plexURL;
+    document.getElementById('plex-token').value= cfg.plexToken;
+    document.getElementById('tmdb-key').value  = cfg.tmdbKey;
+    document.getElementById('proxy-url').value = cfg.proxyURL;
   } catch(e){}
 }
 
