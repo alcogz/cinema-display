@@ -1223,52 +1223,37 @@ async function poll() {
 // KALEIDESCAPE POLLING
 // via CORS proxy → KS Control Protocol
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// KALEIDESCAPE POLLING
+// via ks-bridge.js running on PC (HTTP on port 8765)
+// ═══════════════════════════════════════
 async function pollKaleidescape() {
   const cfg = state.config;
   if (!cfg.ksIP) return null;
-  // local-cors-proxy routes all requests through /proxy/
-  const proxyBase = (cfg.proxyURL || `http://${cfg.ksIP}:8080`).replace(/\/$/, '') + '/proxy';
+
+  // Bridge runs on the PC at the proxy IP, port 8765
+  const bridgeHost = (cfg.proxyURL || '')
+    .replace(/\/proxy\/?$/, '')   // strip /proxy suffix
+    .replace(/:8080$/, ':8765')   // swap old proxy port for bridge port
+    || `http://192.168.1.41:8765`;
+
   try {
-    // KS Control Protocol: GET /api/v1/player/ui_state
-    const r = await fetch(`${proxyBase}/api/v1/player/ui_state`, {
-      headers: { 'Accept': 'application/json' },
+    const r = await fetch(`${bridgeHost}/now-playing`, {
       signal: AbortSignal.timeout(3000)
     });
     if (!r.ok) return null;
     const data = await r.json();
 
-    // KS REST response for now-playing
-    const content = data?.content;
-    if (!content || data?.playback_state === 'idle' || data?.playback_state === 'stopped') return null;
+    if (!data.playing || !data.title) return null;
 
     return {
-      title: content.title || content.movie_title || 'Unknown',
-      year: content.year || '',
+      title:  data.title,
+      year:   data.year  || '',
       tmdbId: null,
     };
   } catch(e) {
-    return await pollKaleidescapeCP3(cfg, proxyBase);
+    return null;
   }
-}
-
-async function pollKaleidescapeCP3(cfg, proxyBase) {
-  try {
-    const r = await fetch(`${proxyBase}/system/status`, {
-      signal: AbortSignal.timeout(2500)
-    });
-    if (!r.ok) return null;
-    const text = await r.text();
-    const titleMatch = text.match(/movie_title:([^\r\n]+)/i);
-    const yearMatch  = text.match(/movie_year:(\d{4})/i);
-    if (titleMatch) {
-      return {
-        title: titleMatch[1].trim(),
-        year: yearMatch ? yearMatch[1] : '',
-        tmdbId: null
-      };
-    }
-  } catch(e) {}
-  return null;
 }
 
 // ═══════════════════════════════════════
