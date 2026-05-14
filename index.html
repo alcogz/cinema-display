@@ -1246,8 +1246,12 @@ async function pollKaleidescape() {
 
     if (!data.playing || !data.title) return null;
 
+    // Clean KS title — strip backslash escapes and trailing punctuation
+    const cleanTitle = data.title.replace(/\\:/g, ':').replace(/[\\]+$/, '').trim();
+    if (!cleanTitle) return null;
+
     return {
-      title:  data.title,
+      title:  cleanTitle,
       year:   data.year  || '',
       tmdbId: null,
     };
