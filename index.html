@@ -1230,33 +1230,38 @@ async function poll() {
 // ═══════════════════════════════════════
 async function pollKaleidescape() {
   const cfg = state.config;
-  if (!cfg.ksIP) return null;
+  if (!cfg.ksIP) { console.log('[KS] No ksIP configured'); return null; }
 
-  // Bridge runs on the PC at the proxy IP, port 8765
-  const bridgeHost = (cfg.proxyURL || '')
-    .replace(/\/proxy\/?$/, '')   // strip /proxy suffix
-    .replace(/:8080$/, ':8765')   // swap old proxy port for bridge port
-    || `http://192.168.1.41:8765`;
+  // Bridge runs HTTPS on port 8765 to avoid mixed-content blocks from GitHub Pages
+  let bridgeHost = 'https://192.168.1.41:8765'; // hardcoded fallback
+  if (cfg.proxyURL) {
+    const m = cfg.proxyURL.match(/^https?:\/\/([^:/]+)/);
+    if (m) bridgeHost = `https://${m[1]}:8765`;
+  }
+
+  console.log('[KS] Polling bridge:', bridgeHost + '/now-playing');
 
   try {
     const r = await fetch(`${bridgeHost}/now-playing`, {
       signal: AbortSignal.timeout(3000)
     });
-    if (!r.ok) return null;
+    if (!r.ok) { console.log('[KS] Bridge HTTP error:', r.status); return null; }
     const data = await r.json();
+    console.log('[KS] Bridge response:', JSON.stringify(data));
 
     if (!data.playing || !data.title) return null;
 
-    // Clean KS title — strip backslash escapes and trailing punctuation
     const cleanTitle = data.title.replace(/\\:/g, ':').replace(/[\\]+$/, '').trim();
     if (!cleanTitle) return null;
 
+    console.log('[KS] Returning movie:', cleanTitle);
     return {
       title:  cleanTitle,
-      year:   data.year  || '',
+      year:   data.year || '',
       tmdbId: null,
     };
   } catch(e) {
+    console.log('[KS] Bridge fetch error:', e.message);
     return null;
   }
 }
@@ -1308,8 +1313,9 @@ async function handleNowPlaying(movie, source) {
   }
 
   // Prevent re-entry while we're already handling this transition
-  if (state._handlingMovie) return;
+  if (state._handlingMovie) { console.log('[NP] Already handling, skipping'); return; }
   state._handlingMovie = true;
+  console.log('[NP] Handling now playing:', movie.title, '| source:', source);
 
   // Stop screensaver IMMEDIATELY before any async work
   stopScreensaver();
@@ -1758,8 +1764,7 @@ document.addEventListener('touchstart', () => {
 // TMDB FETCH
 // ═══════════════════════════════════════
 async function fetchTMDB(title, year, tmdbId) {
-  const key = state.config.tmdbKey;
-  if (!key) return null;
+  console.log('[TMDB] Searching for:', title, year);
   try {
     let movieId = tmdbId;
     if (!movieId) {
