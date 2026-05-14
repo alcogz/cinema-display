@@ -165,9 +165,6 @@
 
   /* ─── MAIN DISPLAY ─── */
   #app {
-    /* Portrait rotation — swaps width/height and rotates 90deg
-       so a landscape TV displays in portrait orientation.
-       Change to rotate(90deg) if content appears upside-down. */
     position: fixed;
     top: 50%;
     left: 50%;
@@ -1130,12 +1127,19 @@ const DEFAULTS = {
 
 function loadConfig() {
   try {
+    // Clear any stale saved config that has empty values for hardcoded fields
+    // so defaults always win on first load after an update
     const s = localStorage.getItem('cinemaDisplayConfig');
     const saved = s ? JSON.parse(s) : {};
-    // Only use saved value if it's non-empty; otherwise fall back to DEFAULTS
+
+    // If saved config has empty values for fields we now hardcode, wipe it
+    const staleSave = !saved.ksIP || !saved.tmdbKey || !saved.proxyURL;
+    if (staleSave) localStorage.removeItem('cinemaDisplayConfig');
+
+    const clean = staleSave ? {} : saved;
     const cfg = {};
     for (const key of Object.keys(DEFAULTS)) {
-      cfg[key] = (saved[key] && saved[key].toString().trim()) ? saved[key] : DEFAULTS[key];
+      cfg[key] = (clean[key] && clean[key].toString().trim()) ? clean[key] : DEFAULTS[key];
     }
     document.getElementById('ks-ip').value      = cfg.ksIP;
     document.getElementById('ks-port').value    = cfg.ksPort;
