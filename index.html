@@ -1226,10 +1226,10 @@ async function poll() {
 async function pollKaleidescape() {
   const cfg = state.config;
   if (!cfg.ksIP) return null;
-  const proxyBase = cfg.proxyURL || `http://${cfg.ksIP}:8080`;
+  // local-cors-proxy routes all requests through /proxy/
+  const proxyBase = (cfg.proxyURL || `http://${cfg.ksIP}:8080`).replace(/\/$/, '') + '/proxy';
   try {
     // KS Control Protocol: GET /api/v1/player/ui_state
-    // (Strato / Terra use REST-ish HTTP on port 10000)
     const r = await fetch(`${proxyBase}/api/v1/player/ui_state`, {
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(3000)
@@ -1244,25 +1244,22 @@ async function pollKaleidescape() {
     return {
       title: content.title || content.movie_title || 'Unknown',
       year: content.year || '',
-      tmdbId: null, // will look up by title
+      tmdbId: null,
     };
   } catch(e) {
-    // Try legacy KS CP3 (text protocol via proxy HTTP bridge)
     return await pollKaleidescapeCP3(cfg, proxyBase);
   }
 }
 
 async function pollKaleidescapeCP3(cfg, proxyBase) {
-  // Some KS systems expose CP3 text protocol via a bridge
   try {
     const r = await fetch(`${proxyBase}/system/status`, {
       signal: AbortSignal.timeout(2500)
     });
     if (!r.ok) return null;
     const text = await r.text();
-    // Parse response lines like: /1/system/status/movie_title:The Dark Knight
     const titleMatch = text.match(/movie_title:([^\r\n]+)/i);
-    const yearMatch = text.match(/movie_year:(\d{4})/i);
+    const yearMatch  = text.match(/movie_year:(\d{4})/i);
     if (titleMatch) {
       return {
         title: titleMatch[1].trim(),
