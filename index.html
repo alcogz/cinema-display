@@ -24,7 +24,7 @@
   }
 
   html, body {
-    width: 100%; height: 100%;
+    width: 100vw; height: 100vh;
     background: var(--bg);
     color: var(--cream);
     font-family: 'Rajdhani', sans-serif;
@@ -33,19 +33,6 @@
     cursor: none;
   }
 
-  /* ─── PORTRAIT ROTATION ───
-     TV is physically portrait (rotated). We rotate the app
-     -90deg so content displays upright on the screen. */
-  #app-rotate {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vh;
-    height: 100vw;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    transform-origin: center center;
-    overflow: hidden;
-  }
 
   /* ─── SETUP OVERLAY ─── */
   #setup {
@@ -771,8 +758,6 @@
 </style>
 </head>
 <body>
-<div id="app-rotate">
-
 <!-- ══════════════════════════════════════════
      SETUP SCREEN
 ══════════════════════════════════════════ -->
@@ -2060,6 +2045,5 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('app').style.display = 'none';
 });
 </script>
-</div><!-- #app-rotate -->
 </body>
 </html>
