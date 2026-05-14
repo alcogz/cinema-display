@@ -836,7 +836,7 @@
       <div class="setup-grid">
         <div class="field">
           <label>Cloudflare Tunnel URL (from StartCinemaProxy)</label>
-          <input id="tunnel-url" type="text" placeholder="https://xxxx.trycloudflare.com">
+          <input id="tunnel-url" type="text" placeholder="https://xxxx.trycloudflare.com" value="https://robots-pillow-velvet-glory.trycloudflare.com">
         </div>
         <div class="field" style="justify-content:flex-end;">
           <label>&nbsp;</label>
@@ -1135,7 +1135,7 @@ const DEFAULTS = {
   ksIP:      '192.168.1.224',
   ksPort:    '10000',
   proxyURL:  'http://192.168.1.41:8080',
-  tunnelURL: '',
+  tunnelURL: 'https://robots-pillow-velvet-glory.trycloudflare.com',
   plexURL:   '',
   plexToken: '',
   tmdbKey:   'd80a82b6d2e0c2691244e61aa4ba084b',
@@ -1778,6 +1778,8 @@ document.addEventListener('touchstart', () => {
 // TMDB FETCH
 // ═══════════════════════════════════════
 async function fetchTMDB(title, year, tmdbId) {
+  const key = state.config.tmdbKey;
+  if (!key) return null;
   console.log('[TMDB] Searching for:', title, year);
   try {
     let movieId = tmdbId;
