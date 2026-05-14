@@ -1008,6 +1008,7 @@ const state = {
   pollInterval: null,
   clockInterval: null,
   elapsedInterval: null,
+  _handlingMovie: false,
   idle: true,
 };
 
@@ -1302,56 +1303,48 @@ async function pollPlex() {
 async function handleNowPlaying(movie, source) {
   const key = `${movie.title}|${movie.year}`;
   if (state.currentMovie === key && state.currentSource === source) {
-    // Same movie, just update elapsed
     updateElapsed();
     return;
   }
 
-  // Flash Now Playing banner on screensaver before transitioning
-  if (ss.active) {
-    setBanner('now-playing');
-    await new Promise(r => setTimeout(r, 2000));
-  }
+  // Prevent re-entry while we're already handling this transition
+  if (state._handlingMovie) return;
+  state._handlingMovie = true;
+
+  // Stop screensaver IMMEDIATELY before any async work
+  stopScreensaver();
+  document.getElementById('idle-display').classList.remove('show');
 
   state.currentMovie = key;
   state.currentSource = source;
   state.idle = false;
 
-  // Stop screensaver if running
-  stopScreensaver();
-  document.getElementById('idle-display').classList.remove('show');
-
-  // Animate out existing info
   animateInfoOut();
 
   // Fetch TMDB metadata
   const tmdbData = await fetchTMDB(movie.title, movie.year, movie.tmdbId);
+  state._handlingMovie = false;
+
   if (!tmdbData) { showToast('Could not find metadata for: ' + movie.title); return; }
 
-  // Set start time if fresh
-  if (!state.startTime || state.currentMovie !== key) {
-    if (movie.viewOffsetMs) {
-      state.startTime = new Date(Date.now() - movie.viewOffsetMs);
-    } else {
-      state.startTime = new Date();
-    }
+  // Set start time
+  if (movie.viewOffsetMs) {
+    state.startTime = new Date(Date.now() - movie.viewOffsetMs);
+  } else {
+    state.startTime = new Date();
   }
   state.runtimeMs = (tmdbData.runtime || 120) * 60 * 1000;
   if (movie.durationMs) state.runtimeMs = movie.durationMs;
 
-  // Update poster
   updatePoster(tmdbData.posterPath);
 
-  // Update ambient BG
   if (tmdbData.backdropPath) {
     document.getElementById('ambient-bg').style.backgroundImage =
       `url(https://image.tmdb.org/t/p/w1280${tmdbData.backdropPath})`;
   }
 
-  // Update info
   animateInfoIn(tmdbData, source);
 
-  // Trailer
   state.trailerKey = tmdbData.trailerKey;
   const btn = document.getElementById('trailer-btn');
   if (tmdbData.trailerKey) {
@@ -1360,10 +1353,8 @@ async function handleNowPlaying(movie, source) {
     btn.classList.remove('visible');
   }
 
-  // Progress bar
   updateProgressBar();
 
-  // Start elapsed timer
   if (state.elapsedInterval) clearInterval(state.elapsedInterval);
   state.elapsedInterval = setInterval(updateElapsed, 10000);
   updateElapsed();
@@ -1777,7 +1768,16 @@ async function fetchTMDB(title, year, tmdbId) {
       const sr = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}${yr}`);
       const sd = await sr.json();
       if (!sd.results?.length) return null;
-      movieId = sd.results[0].id;
+
+      // Find best match: prefer exact title match, then closest year
+      const titleLower = title.toLowerCase().trim();
+      let best = sd.results.find(r =>
+        r.title?.toLowerCase().trim() === titleLower ||
+        r.original_title?.toLowerCase().trim() === titleLower
+      );
+      // If no exact match, fall back to first result
+      if (!best) best = sd.results[0];
+      movieId = best.id;
     }
 
     // Get full details + videos
