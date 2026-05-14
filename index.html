@@ -166,26 +166,20 @@
   /* ─── MAIN DISPLAY ─── */
   #app {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vh;
-    height: 100vw;
+    top: 50%; left: 50%;
+    width: 100vh; height: 100vw;
     transform: translate(-50%, -50%) rotate(90deg);
     transform-origin: center center;
-    display: flex; align-items: stretch;
-    opacity: 0; transition: opacity 1s;
-    overflow: hidden;
+    display: flex; flex-direction: column; align-items: stretch;
+    opacity: 0; transition: opacity 1s; overflow: hidden;
   }
   #app.visible { opacity: 1; }
 
-  /* Ambient background */
   #ambient-bg {
     position: absolute; inset: -40px;
     background-size: cover; background-position: center;
     filter: blur(80px) saturate(1.4) brightness(0.22);
-    transform: scale(1.15);
-    transition: background-image 1.2s ease;
-    z-index: 0;
+    transform: scale(1.15); transition: background-image 1.2s ease; z-index: 0;
   }
   #vignette {
     position: absolute; inset: 0; z-index: 1;
@@ -197,233 +191,172 @@
     pointer-events: none;
   }
 
-  /* ─── POSTER AREA ─── */
-  #poster-area {
-    position: relative; z-index: 10;
-    flex: 0 0 auto;
-    width: 42vw;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 24px 16px 24px 40px;
+  /* ─── NOW PLAYING BANNER — full width top ─── */
+  #np-banner-wrap {
+    position: relative; z-index: 10; flex-shrink: 0;
+    width: 100%; display: flex; justify-content: center; align-items: center;
+    padding: clamp(8px, 1.5vh, 20px) clamp(20px, 8vw, 120px) clamp(4px, 0.8vh, 10px);
+    opacity: 0; transform: translateY(-10px);
+    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1);
+  }
+  #np-banner-wrap.visible { opacity: 1; transform: none; }
+  #np-banner-img {
+    width: 100%; max-width: clamp(200px, 75%, 560px);
+    height: auto; display: block;
+    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.8));
   }
 
+  /* ─── MAIN CONTENT ROW — poster left, info right ─── */
+  #np-content {
+    position: relative; z-index: 10;
+    flex: 1; display: flex; align-items: stretch; overflow: hidden;
+    padding: 0 clamp(16px, 3vw, 40px) clamp(12px, 2vh, 24px);
+    gap: clamp(12px, 2vw, 28px);
+    min-height: 0;
+  }
+
+  /* ─── POSTER AREA ─── */
+  #poster-area {
+    flex: 0 0 auto; width: 36%;
+    display: flex; align-items: center; justify-content: center;
+  }
   .poster-frame {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 2/3;
-    max-height: 78vh;
+    position: relative; width: 100%; aspect-ratio: 2/3;
     border: 1px solid rgba(201,168,76,0.3);
-    box-shadow:
-      0 0 0 1px rgba(0,0,0,0.8),
-      0 40px 120px rgba(0,0,0,0.8),
-      0 0 60px rgba(201,168,76,0.06);
-    overflow: hidden;
-    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.8), 0 20px 60px rgba(0,0,0,0.8);
+    overflow: hidden; border-radius: 2px;
   }
   .poster-frame::before {
-    content: '';
-    position: absolute; inset: 0; z-index: 3;
+    content: ''; position: absolute; inset: 0; z-index: 3;
     background: linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.3) 100%);
     pointer-events: none;
   }
-
   #poster-img {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    transition: opacity 0.8s ease, transform 8s ease;
-    transform: scale(1.02);
+    width: 100%; height: 100%; object-fit: cover;
+    transition: opacity 0.8s ease, transform 8s ease; transform: scale(1.02);
   }
   #poster-img.loading { opacity: 0; }
   #poster-img.ken-burns { transform: scale(1.06); }
-
   .poster-placeholder {
-    width: 100%; height: 100%;
-    display: none;
-    flex-direction: column;
-    align-items: center; justify-content: center; gap: 16px;
+    width: 100%; height: 100%; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 12px;
     background: linear-gradient(135deg, #111008 0%, #0d0c08 100%);
   }
   .poster-placeholder.visible { display: flex; }
-  .poster-placeholder .film-icon { font-size: 48px; opacity: 0.2; }
-  .poster-placeholder p {
-    font-size: 11px; letter-spacing: 0.3em; color: #4a3f2a;
-    text-transform: uppercase;
-  }
-
-  /* Playback indicator strip */
+  .poster-placeholder .film-icon { font-size: 32px; opacity: 0.2; }
+  .poster-placeholder p { font-size: 8px; letter-spacing: 0.3em; color: #4a3f2a; text-transform: uppercase; }
   .playback-strip {
     position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
     height: 3px; background: rgba(255,255,255,0.08); overflow: hidden;
   }
   .playback-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold));
     width: 0%; transition: width 30s linear;
   }
 
   /* ─── INFO AREA ─── */
   #info-area {
-    position: relative; z-index: 10;
-    flex: 1;
-    display: flex; flex-direction: column;
-    justify-content: center;
-    padding: 40px 48px 40px 32px;
-    gap: 0;
-    overflow: hidden;
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(6px, 1vh, 12px) clamp(8px, 1.5vw, 20px) clamp(6px, 1vh, 12px) 0;
+    gap: 0; overflow: hidden; min-width: 0;
   }
-
-  /* Now Playing banner image at top of info */
-  #np-banner-wrap {
-    margin-bottom: 20px;
-    opacity: 0; transform: translateY(-8px);
-    transition: all 0.6s ease;
-  }
-  #np-banner-wrap.visible { opacity: 1; transform: none; }
-  #np-banner-img {
-    width: 100%;
-    max-width: 220px;
-    height: auto;
-    display: block;
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.8));
-  }
-
   .now-playing-label {
-    font-size: 10px; letter-spacing: 0.5em; font-weight: 500;
+    font-size: clamp(7px, 0.9vw, 10px); letter-spacing: 0.4em; font-weight: 500;
     color: var(--gold); text-transform: uppercase;
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 20px;
-    opacity: 0; transform: translateY(12px);
-    transition: all var(--transition);
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: clamp(6px, 1vh, 14px);
+    opacity: 0; transform: translateY(10px); transition: all var(--transition);
   }
   .now-playing-label.visible { opacity: 1; transform: none; }
   .live-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--gold);
-    animation: live-pulse 2s infinite;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--gold);
+    animation: live-pulse 2s infinite; flex-shrink: 0;
   }
   @keyframes live-pulse {
     0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(201,168,76,0.4); }
-    50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(201,168,76,0); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(201,168,76,0); }
   }
-
   #movie-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(28px, 4.5vw, 64px);
-    font-weight: 300; line-height: 0.95;
-    color: var(--cream); letter-spacing: -0.01em;
-    margin-bottom: 10px;
-    opacity: 0; transform: translateY(20px);
-    transition: all var(--transition) 0.08s;
+    font-size: clamp(18px, 3vw, 48px);
+    font-weight: 300; line-height: 1; color: var(--cream);
+    margin-bottom: clamp(3px, 0.5vh, 8px);
+    opacity: 0; transform: translateY(14px); transition: all var(--transition) 0.08s;
+    overflow: hidden;
   }
   #movie-title.visible { opacity: 1; transform: none; }
   #movie-title em { font-style: italic; color: rgba(240,232,216,0.6); }
-
   #movie-year {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 16px; font-weight: 300; font-style: italic;
+    font-size: clamp(11px, 1.4vw, 16px); font-weight: 300; font-style: italic;
     color: var(--gold-dim); letter-spacing: 0.1em;
-    margin-bottom: 24px;
-    opacity: 0; transform: translateY(12px);
-    transition: all var(--transition) 0.14s;
+    margin-bottom: clamp(8px, 1.2vh, 18px);
+    opacity: 0; transform: translateY(10px); transition: all var(--transition) 0.14s;
   }
   #movie-year.visible { opacity: 1; transform: none; }
-
   .divider {
-    width: 60px; height: 1px;
-    background: linear-gradient(90deg, var(--gold), transparent);
-    margin-bottom: 24px;
+    width: 40px; height: 1px; background: linear-gradient(90deg, var(--gold), transparent);
+    margin-bottom: clamp(8px, 1.2vh, 18px);
     opacity: 0; transition: opacity var(--transition) 0.2s;
   }
   .divider.visible { opacity: 1; }
-
-  /* Ratings row */
   #ratings-row {
-    display: flex; align-items: center; gap: 16px;
-    margin-bottom: 24px;
-    opacity: 0; transform: translateY(10px);
-    transition: all var(--transition) 0.22s;
-    flex-wrap: wrap;
+    display: flex; align-items: center; gap: clamp(8px, 1vw, 14px);
+    margin-bottom: clamp(8px, 1.2vh, 18px);
+    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.22s; flex-wrap: wrap;
   }
   #ratings-row.visible { opacity: 1; transform: none; }
-
-  .rating-badge {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 4px; min-width: 50px;
-  }
-  .rating-badge .source {
-    font-size: 9px; letter-spacing: 0.25em; color: #6a5a40; text-transform: uppercase;
-  }
+  .rating-badge { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .rating-badge .source { font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.2em; color: #6a5a40; text-transform: uppercase; }
   .rating-badge .score {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 24px; font-weight: 400; color: var(--cream); line-height: 1;
+    font-size: clamp(14px, 1.9vw, 24px); font-weight: 400; color: var(--cream); line-height: 1;
   }
   .rating-badge .score.gold { color: var(--gold); }
-  .rating-badge .stars { color: var(--gold); font-size: 11px; letter-spacing: 2px; }
-  .rating-sep { width: 1px; height: 32px; background: var(--border); }
+  .rating-badge .stars { color: var(--gold); font-size: clamp(7px, 0.9vw, 10px); letter-spacing: 1px; }
+  .rating-sep { width: 1px; height: 26px; background: var(--border); }
   .mpaa-badge {
-    padding: 4px 8px;
-    border: 1px solid rgba(201,168,76,0.3);
-    font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
-    color: var(--cream); border-radius: 2px;
+    padding: 2px 6px; border: 1px solid rgba(201,168,76,0.3);
+    font-size: clamp(8px, 1vw, 11px); font-weight: 600; color: var(--cream); border-radius: 2px;
   }
-
-  /* Genres */
   #genres {
-    display: flex; gap: 6px; flex-wrap: wrap;
-    margin-bottom: 24px;
-    opacity: 0; transform: translateY(10px);
-    transition: all var(--transition) 0.28s;
+    display: flex; gap: 4px; flex-wrap: wrap;
+    margin-bottom: clamp(8px, 1.2vh, 18px);
+    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.28s;
   }
   #genres.visible { opacity: 1; transform: none; }
   .genre-tag {
-    padding: 3px 10px;
-    border: 1px solid var(--border);
-    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 2px 7px; border: 1px solid var(--border);
+    font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.16em; text-transform: uppercase;
     color: #8a7a60; border-radius: 2px;
   }
-
-  /* Times row */
   #times-row {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 1px; background: var(--border);
-    margin-bottom: 24px;
-    opacity: 0; transform: translateY(10px);
-    transition: all var(--transition) 0.32s;
+    margin-bottom: clamp(8px, 1vh, 14px);
+    opacity: 0; transform: translateY(8px); transition: all var(--transition) 0.32s;
   }
   #times-row.visible { opacity: 1; transform: none; }
-  .time-cell {
-    background: var(--panel);
-    padding: 10px 12px;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .time-cell .tc-label {
-    font-size: 8px; letter-spacing: 0.28em; color: #6a5a40; text-transform: uppercase;
-  }
+  .time-cell { background: var(--panel); padding: clamp(5px, 0.8vh, 10px) clamp(7px, 1vw, 12px); display: flex; flex-direction: column; gap: 2px; }
+  .time-cell .tc-label { font-size: clamp(6px, 0.75vw, 8px); letter-spacing: 0.24em; color: #6a5a40; text-transform: uppercase; }
   .time-cell .tc-value {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 18px; font-weight: 300; color: var(--cream); letter-spacing: 0.05em;
+    font-size: clamp(11px, 1.6vw, 18px); font-weight: 300; color: var(--cream);
   }
-  .time-cell .tc-value.running {
-    color: var(--gold); animation: flicker 4s infinite;
-  }
+  .time-cell .tc-value.running { color: var(--gold); animation: flicker 4s infinite; }
   @keyframes flicker { 0%,90%,100%{opacity:1} 92%{opacity:0.85} }
-
-  /* Source indicator */
   #source-row {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 10px;
     opacity: 0; transition: opacity var(--transition) 0.36s;
   }
   #source-row.visible { opacity: 1; }
   .source-indicator {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 9px; letter-spacing: 0.2em; color: #5a4a30; text-transform: uppercase;
+    display: flex; align-items: center; gap: 6px;
+    font-size: clamp(6px, 0.8vw, 9px); letter-spacing: 0.16em; color: #5a4a30; text-transform: uppercase;
   }
-  .source-indicator .dot {
-    width: 5px; height: 5px; border-radius: 50%; background: var(--green);
-  }
+  .source-indicator .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
   .source-indicator .dot.idle { background: #4a3a20; }
 
-  /* ─── TRAILER BUTTON — hidden ─── */
   #trailer-btn { display: none; }
     border-style: solid;
     border-width: 5px 0 5px 9px;
@@ -904,17 +837,32 @@
     </div>
   </div>
 
+  <!-- Now Playing Banner — full width across top -->
+  <div id="np-banner-wrap">
+    <img id="np-banner-img" src="https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png" alt="Now Playing">
+  </div>
+
+  <!-- Main content row -->
+  <div id="np-content">
+
+  <!-- Poster -->
+  <div id="poster-area">
+    <div class="poster-frame" id="poster-frame">
+      <div class="poster-placeholder" id="poster-placeholder">
+        <div class="film-icon">🎬</div>
+        <p>Awaiting Playback</p>
+      </div>
+      <img id="poster-img" src="" alt="" class="loading" style="position:absolute;inset:0;">
+      <div class="playback-strip"><div class="playback-fill" id="progress-bar"></div></div>
+    </div>
+  </div>
+
   <!-- Info -->
   <div id="info-area">
-    <!-- Now Playing banner image -->
-    <div id="np-banner-wrap">
-      <img id="np-banner-img" src="https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png" alt="Now Playing">
-    </div>
-
     <div class="now-playing-label" id="np-label">
       <span class="live-dot"></span>
       Now Playing
-      <span style="margin-left:auto;font-size:9px;color:#4a3a20;" id="source-tag">—</span>
+      <span style="margin-left:auto;font-size:8px;color:#4a3a20;" id="source-tag">—</span>
     </div>
 
     <div id="movie-title">—</div>
@@ -930,12 +878,12 @@
       <div class="rating-sep"></div>
       <div class="rating-badge">
         <span class="source">Rating</span>
-        <span class="score" id="score-mpaa" style="font-size:18px;letter-spacing:0.08em;">—</span>
+        <span class="score" id="score-mpaa" style="letter-spacing:0.06em;">—</span>
       </div>
       <div class="rating-sep"></div>
       <div class="rating-badge">
         <span class="source">Runtime</span>
-        <span class="score" id="score-runtime" style="font-size:20px;">—</span>
+        <span class="score" id="score-runtime">—</span>
       </div>
     </div>
 
@@ -961,7 +909,7 @@
         <span class="dot" id="ks-live-dot"></span>
         Kaleidescape
       </div>
-      <div style="width:1px;height:14px;background:var(--border);"></div>
+      <div style="width:1px;height:12px;background:var(--border);"></div>
       <div class="source-indicator">
         <span class="dot idle" id="plex-live-dot"></span>
         Plex
@@ -969,11 +917,7 @@
     </div>
   </div>
 
-  <!-- Trailer button -->
-  <button id="trailer-btn" onclick="openTrailer()">
-    <span class="play-icon"></span>
-    Play Trailer
-  </button>
+  </div><!-- #np-content -->
 </div>
 
 <!-- Trailer modal -->
