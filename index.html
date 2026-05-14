@@ -1206,6 +1206,7 @@ function startClock() {
 }
 
 function startPolling() {
+  state._pollMisses = 0;
   poll();
   state.pollInterval = setInterval(poll, 5000);
 }
@@ -1214,6 +1215,7 @@ async function poll() {
   // Try Kaleidescape first
   let movie = await pollKaleidescape();
   if (movie) {
+    state._pollMisses = 0;
     document.getElementById('ks-live-dot').classList.remove('idle');
     document.getElementById('plex-live-dot').classList.add('idle');
     handleNowPlaying(movie, 'kaleidescape');
@@ -1224,14 +1226,17 @@ async function poll() {
   // Fallback to Plex
   movie = await pollPlex();
   if (movie) {
+    state._pollMisses = 0;
     document.getElementById('plex-live-dot').classList.remove('idle');
     handleNowPlaying(movie, 'plex');
     return;
   }
   document.getElementById('plex-live-dot').classList.add('idle');
 
-  // Nothing playing
-  if (!state.idle) {
+  // Nothing playing — require 3 consecutive misses before going idle
+  // This prevents tunnel latency blips from triggering the screensaver
+  state._pollMisses = (state._pollMisses || 0) + 1;
+  if (!state.idle && state._pollMisses >= 3) {
     setIdle();
   }
 }
