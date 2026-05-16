@@ -669,6 +669,17 @@
     <div class="setup-logo">Cinema Display</div>
     <div class="setup-title">Configure Your <em>Screening Room</em></div>
 
+    <!-- Last updated + action buttons at top -->
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
+      <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
+        Last Updated: <span style="color:#7a6a50;">May 15, 2026</span>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
+        <button class="btn-launch" onclick="launch()" style="margin:0;">▶ &nbsp; Launch Cinema Display</button>
+      </div>
+    </div>
+
     <div class="setup-section">
       <div class="setup-section-label">Primary Source — Kaleidescape</div>
       <div class="setup-grid three">
@@ -755,8 +766,6 @@
       </div>
     </div>
 
-    <button class="btn-demo" onclick="launchDemo()">▷ &nbsp; Preview Demo — no credentials needed</button>
-    <button class="btn-launch" onclick="launch()">▶ &nbsp; Launch with My Accounts</button>
   </div>
 </div>
 
@@ -1117,7 +1126,7 @@ async function poll() {
     state._pollMisses = 0;
     document.getElementById('ks-live-dot').classList.remove('idle');
     document.getElementById('plex-live-dot').classList.add('idle');
-    handleNowPlaying(movie, 'kaleidescape');
+    handleNowPlaying(movie, movie.source || 'kaleidescape');
     return;
   }
   document.getElementById('ks-live-dot').classList.add('idle');
@@ -1172,11 +1181,12 @@ async function pollKaleidescape() {
     const cleanTitle = data.title.replace(/\\:/g, ':').replace(/[\\]+$/, '').trim();
     if (!cleanTitle) return null;
 
-    console.log('[KS] Returning movie:', cleanTitle);
+    console.log('[KS] Returning movie:', cleanTitle, '| source:', data.source);
     return {
       title:  cleanTitle,
       year:   data.year || '',
       tmdbId: null,
+      source: data.source || 'kaleidescape',
     };
   } catch(e) {
     console.log('[KS] Bridge fetch error:', e.message);
