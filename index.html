@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- PWA — hides browser chrome when added to home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cinema Display">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#080808">
+<link rel="manifest" href="manifest.json">
 <title>Cinema Display</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -671,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">May 16, 2026</span>
+        Last Updated: <span style="color:#7a6a50;">May 16, 2026 @ 4:52pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
