@@ -672,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ 11:10pm </span>
+        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ 11:40pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1141,10 +1141,9 @@ async function poll() {
   }
   document.getElementById('plex-live-dot').classList.add('idle');
 
-  // Nothing playing — require 3 consecutive misses before going idle
-  // This prevents tunnel latency blips from triggering the screensaver
+  // Nothing playing — require 2 consecutive misses before going idle
   state._pollMisses = (state._pollMisses || 0) + 1;
-  if (!state.idle && state._pollMisses >= 3) {
+  if (!state.idle && state._pollMisses >= 2) {
     setIdle();
   }
 }
@@ -1254,7 +1253,7 @@ async function handleNowPlaying(movie, source) {
 
   // Fetch TMDB metadata
   const tmdbData = await fetchTMDB(movie.title, movie.year, movie.tmdbId);
-  state._handlingMovie = false;
+  state._handlingMovie = false; // Always clear flag after async work
 
   if (!tmdbData) { showToast('Could not find metadata for: ' + movie.title); return; }
 
@@ -1296,6 +1295,8 @@ function setIdle() {
   state.currentMovie = null;
   state.currentSource = null;
   state.trailerKey = null;
+  state._handlingMovie = false;
+  state._pollMisses = 0;
   if (state.elapsedInterval) clearInterval(state.elapsedInterval);
 
   animateInfoOut();
