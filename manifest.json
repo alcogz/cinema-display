@@ -1,0 +1,18 @@
+{
+  "name": "Cinema Display",
+  "short_name": "Cinema",
+  "description": "Cinema Display — Now Playing",
+  "start_url": "/cinema-display/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
