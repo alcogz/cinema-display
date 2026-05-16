@@ -672,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">May 15, 2026</span>
+        Last Updated: <span style="color:#7a6a50;">May 15, 2026 10:39pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1153,10 +1153,26 @@ async function poll() {
 // KALEIDESCAPE POLLING
 // via CORS proxy → KS Control Protocol
 // ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// KALEIDESCAPE POLLING
-// via ks-bridge.js running on PC (HTTP on port 8765)
-// ═══════════════════════════════════════
+// ── Auto-fetch tunnel URL from bridge ────────────────────────────────────────
+// Fetches the current tunnel URL from the local bridge every 60s
+// so it stays current even after StartCinemaProxy restarts
+async function refreshTunnelUrl() {
+  try {
+    const localBridge = 'http://192.168.1.41:8765';
+    const r = await fetch(`${localBridge}/tunnel-url`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const data = await r.json();
+      if (data.url && data.url !== state.config.tunnelURL) {
+        state.config.tunnelURL = data.url;
+        console.log('[Bridge] Tunnel URL updated:', data.url);
+      }
+    }
+  } catch(e) {}
+}
+
+// Poll tunnel URL every 60s in case it changes
+setInterval(refreshTunnelUrl, 60000);
+refreshTunnelUrl();
 async function pollKaleidescape() {
   const cfg = state.config;
   if (!cfg.ksIP) { console.log('[KS] No ksIP configured'); return null; }
