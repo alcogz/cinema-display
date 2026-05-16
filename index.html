@@ -672,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ 11pm</span>
+        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ 11:10pm </span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1166,6 +1166,7 @@ async function pollKaleidescape() {
 
   try {
     const r = await fetch(`${bridgeHost}/now-playing`, {
+      headers: { 'ngrok-skip-browser-warning': '1' },
       signal: AbortSignal.timeout(3000)
     });
     if (!r.ok) { console.log('[KS] Bridge HTTP error:', r.status); return null; }
