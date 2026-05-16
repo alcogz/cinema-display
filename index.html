@@ -672,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ 11:40pm</span>
+        Last Updated: <span style="color:#7a6a50;">May 15, 2026 @ Midnight</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1244,6 +1244,7 @@ async function handleNowPlaying(movie, source) {
   // Stop screensaver IMMEDIATELY before any async work
   stopScreensaver();
   document.getElementById('idle-display').classList.remove('show');
+  document.getElementById('app').classList.add('visible');
 
   state.currentMovie = key;
   state.currentSource = source;
@@ -1302,11 +1303,17 @@ function setIdle() {
   animateInfoOut();
   document.getElementById('trailer-btn').classList.remove('visible');
 
+  // Hide the now-playing app view
+  const app = document.getElementById('app');
+  app.classList.remove('visible');
+
   // Reset now-playing poster
   const img = document.getElementById('poster-img');
   img.classList.add('loading');
-  document.getElementById('poster-placeholder').classList.remove('visible');
+  img.src = '';
+  document.getElementById('poster-placeholder').classList.add('visible');
   document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('ambient-bg').style.backgroundImage = '';
 
   // Launch screensaver
   startScreensaver();
