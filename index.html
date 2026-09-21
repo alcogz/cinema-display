@@ -678,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 3:47pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 3:52pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1340,6 +1340,11 @@ function setIdle() {
 // ═══════════════════════════════════════
 // SCREENSAVER ENGINE — fullscreen poster
 // ═══════════════════════════════════════
+// Screensaver poster size. 'original' (~2000x3000, ~24MB decoded each) was
+// crashing the TV's browser once a YouTube trailer started on top of it.
+// w780 is ~3.6MB decoded. Options: w500, w780, original.
+const SS_POSTER_SIZE = 'w780';
+
 const ss = {
   movies: [],
   currentIdx: 0,
@@ -1501,7 +1506,7 @@ let ytPlayer   = null;
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
 // Fallback max duration if ENDED event never fires (e.g. network issue)
-const TRAILER_MAX_MS = 2.5 * 60 * 1000;
+const TRAILER_MAX_MS = 4 * 60 * 1000;
 
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
@@ -1523,13 +1528,14 @@ function ssStartTrailer(key, title) {
   fill.style.transform = 'scaleX(0)';
 
   // Fallback timeout in case ENDED never fires
-  ss._trailerTimeout = setTimeout(ssOnTrailerEnd, TRAILER_MAX_MS);
+  ss._trailerTimeout = setTimeout(() => { console.warn('[SS] Trailer hit max length'); ssOnTrailerEnd(); }, TRAILER_MAX_MS);
+  console.log('[SS] Trailer start: ' + title);
 
   // Preload next poster while trailer plays
   const nextMovie = ss.movies[(ss.currentIdx + 1) % ss.movies.length];
   if (nextMovie?.poster_path) {
     const pre = new Image();
-    pre.src = `https://image.tmdb.org/t/p/original${nextMovie.poster_path}`;
+    pre.src = `https://image.tmdb.org/t/p/${SS_POSTER_SIZE}${nextMovie.poster_path}`;
   }
 
   function createYTPlayer() {
@@ -1560,9 +1566,9 @@ function ssStartTrailer(key, title) {
             const frame = document.getElementById('ss-trailer-frame');
             if (frame) frame.style.opacity = '1';
           }
-          if (e.data === YT.PlayerState.ENDED) ssOnTrailerEnd();
+          if (e.data === YT.PlayerState.ENDED) { console.log('[SS] Trailer ended normally'); ssOnTrailerEnd(); }
         },
-        onError: () => { ssOnTrailerEnd(); }
+        onError: e => { console.warn('[SS] YouTube error ' + e.data + ' — skipping trailer'); ssOnTrailerEnd(); }
       }
     });
   }
@@ -1769,7 +1775,7 @@ async function showSSPoster(movie) {
   const frontLayer = isAFront ? layerA : layerB;
   const backLayer  = isAFront ? layerB : layerA;
 
-  const posterUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
+  const posterUrl = `https://image.tmdb.org/t/p/${SS_POSTER_SIZE}${movie.poster_path}`;
 
   // Load with a timeout, and report whether it actually succeeded. Never swap
   // to a layer whose image didn't load — that is what produced black screens.
