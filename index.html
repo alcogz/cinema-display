@@ -678,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 3:52pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 4:14pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1321,9 +1321,11 @@ function setIdle() {
   animateInfoOut();
   document.getElementById('trailer-btn').classList.remove('visible');
 
-  // Hide the now-playing app view
-  const app = document.getElementById('app');
-  app.classList.remove('visible');
+  // NOTE: #app is the rotated container for EVERYTHING, screensaver included.
+  // It must stay visible — removing 'visible' here is what blacked out the
+  // screen after a movie. The screensaver (z-index 50, opaque) covers the
+  // now-playing view on its own.
+  document.getElementById('app').classList.add('visible');
 
   // Reset now-playing poster
   const img = document.getElementById('poster-img');
@@ -1345,6 +1347,9 @@ function setIdle() {
 // w780 is ~3.6MB decoded. Options: w500, w780, original.
 const SS_POSTER_SIZE = 'w780';
 
+// Diagnostic switch: add ?trailers=0 to the URL for posters only (15s each)
+const SS_TRAILERS = new URLSearchParams(location.search).get('trailers') !== '0';
+
 const ss = {
   movies: [],
   currentIdx: 0,
@@ -1359,7 +1364,7 @@ const ss = {
   _trailerResolve: null,
   _trailerTimeout: null,
   _posterDwellTimeout: null,
-  POSTER_DURATION: 5000,   // ms to show poster before trailer starts
+  POSTER_DURATION: SS_TRAILERS ? 5000 : 15000,   // ms to show poster before trailer starts
   gen: 0,                  // bumps on every start/stop so stale slide chains exit
   lastSlideAt: 0,          // timestamp of last slide change (used by watchdog)
   failStreak: 0,           // consecutive posters that failed to load
@@ -1483,7 +1488,7 @@ async function runSSSlide(idx) {
   // Step 1 — after 5s poster dwell, start trailer (or skip straight to advance)
   ss.trailerTimer = setTimeout(() => {
     if (!ss.active) return;
-    if (movie.trailerKey) {
+    if (SS_TRAILERS && movie.trailerKey) {
       ssStartTrailer(movie.trailerKey, movie.title);
     } else {
       ssAdvance();
@@ -1688,12 +1693,17 @@ const SS_STALL_MS = TRAILER_MAX_MS + 60 * 1000;
 setInterval(() => {
   if (!state.idle || state._handlingMovie || !ss.lastSlideAt) return;
   const hidden  = !document.getElementById('screensaver').classList.contains('show')
-               || document.getElementById('app').classList.contains('visible');
+               || !document.getElementById('app').classList.contains('visible');
   const stalled = Date.now() - ss.lastSlideAt > SS_STALL_MS;
   if (!ss.active || hidden || stalled) {
     console.warn('[WD] Screensaver not rotating — restarting', { active: ss.active, hidden, stalled });
+    document.getElementById('app').classList.add('visible');
+    if (hidden && ss.active && !stalled) {
+      // Just un-hide — don't kill a trailer that's playing fine
+      document.getElementById('screensaver').classList.add('show');
+      return;
+    }
     stopScreensaver();
-    document.getElementById('app').classList.remove('visible');
     startScreensaver();
   }
 }, 30000);
