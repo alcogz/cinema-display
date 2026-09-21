@@ -1126,6 +1126,14 @@ function startPolling() {
 }
 
 async function poll() {
+  // Polls can take up to ~7s (3s KS + 4s Plex timeouts) but fire every 5s —
+  // never let two overlap, or setIdle/handleNowPlaying can run out of order.
+  if (state._polling) return;
+  state._polling = true;
+  try { await pollOnce(); } finally { state._polling = false; }
+}
+
+async function pollOnce() {
   // Try Kaleidescape first
   let movie = await pollKaleidescape();
   if (movie) {
@@ -1262,6 +1270,9 @@ async function handleNowPlaying(movie, source) {
   const tmdbData = await fetchTMDB(movie.title, movie.year, movie.tmdbId);
   state._handlingMovie = false; // Always clear flag after async work
 
+  // Movie may have stopped while TMDB was loading — don't repaint a dead title
+  if (state.idle || state.currentMovie !== key) { console.log('[NP] Went idle during lookup, dropping'); return; }
+
   if (!tmdbData) { showToast('Could not find metadata for: ' + movie.title); return; }
 
   // Set start time
@@ -1343,6 +1354,8 @@ const ss = {
   _trailerTimeout: null,
   _posterDwellTimeout: null,
   POSTER_DURATION: 5000,   // ms to show poster before trailer starts
+  gen: 0,                  // bumps on every start/stop so stale slide chains exit
+  lastSlideAt: 0,          // timestamp of last slide change (used by watchdog)
 };
 
 async function fetchScreensaverPool() {
@@ -1385,18 +1398,29 @@ function shuffle(arr) {
 }
 
 async function startScreensaver() {
+  if (!state.idle) return;   // something is playing — never cover now-playing
   if (ss.active) return;
   ss.active = true;
+  const gen = ++ss.gen;
 
   document.getElementById('screensaver').classList.add('show');
   document.getElementById('idle-display').classList.remove('show');
 
   if (ss.movies.length === 0) await fetchScreensaverPool();
-  if (ss.movies.length === 0) return;
+  if (gen !== ss.gen || !ss.active) return;
+  if (ss.movies.length === 0) {
+    // Pool fetch failed — release the active flag so we can retry instead of
+    // sitting on a blank screen with ss.active stuck true forever
+    ss.active = false;
+    setTimeout(() => { if (state.idle) startScreensaver(); }, 30000);
+    return;
+  }
 
   ss.currentIdx = Math.floor(Math.random() * ss.movies.length);
   setBanner('coming-soon');
   await runSSSlide(ss.currentIdx);
+  if (gen !== ss.gen) return;
+  clearInterval(ss.fetchTimer);
   ss.fetchTimer = setInterval(fetchScreensaverPool, 30 * 60 * 1000);
 }
 
@@ -1421,6 +1445,8 @@ async function runSSSlide(idx) {
   if (!ss.active) return;
   const movie = ss.movies[idx];
   if (!movie) return;
+  const gen = ss.gen;
+  ss.lastSlideAt = Date.now();
 
   // Clear any running timers from the previous slide
   ssClearTimers();
@@ -1435,6 +1461,7 @@ async function runSSSlide(idx) {
   if (titleEl) titleEl.textContent = '';
 
   await showSSPoster(movie);
+  if (!ss.active || gen !== ss.gen) return;   // stopped/restarted while poster loaded
   startSSProgress(ss.POSTER_DURATION);
 
   // Step 1 — after 5s poster dwell, start trailer (or skip straight to advance)
@@ -1603,6 +1630,7 @@ function ssSkipTrailer() {
 
 function stopScreensaver() {
   ss.active = false;
+  ss.gen++;
   clearTimeout(ss.trailerTimer);
   clearTimeout(ss._posterDwellTimeout);
   clearInterval(ss.fetchTimer);
@@ -1621,6 +1649,28 @@ function stopScreensaver() {
   ss.front = 'a';
 }
 
+// ── Self-healing watchdog ────────────────────────────────────────────────────
+// If we're idle but the screensaver isn't visibly rotating, tear it down and
+// restart. A full slide is at most 5s poster + trailer max + 5s dwell.
+const SS_STALL_MS = TRAILER_MAX_MS + 60 * 1000;
+setInterval(() => {
+  if (!state.idle || state._handlingMovie || !ss.lastSlideAt) return;
+  const hidden  = !document.getElementById('screensaver').classList.contains('show')
+               || document.getElementById('app').classList.contains('visible');
+  const stalled = Date.now() - ss.lastSlideAt > SS_STALL_MS;
+  if (!ss.active || hidden || stalled) {
+    console.warn('[WD] Screensaver not rotating — restarting', { active: ss.active, hidden, stalled });
+    stopScreensaver();
+    document.getElementById('app').classList.remove('visible');
+    startScreensaver();
+  }
+}, 30000);
+
+// TV waking from standby: check status right away instead of waiting a cycle
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.pollInterval) poll();
+});
+
 async function showSSPoster(movie) {
   const infoEl  = document.getElementById('ss-info');
   const layerA  = document.getElementById('ss-layer-a');
@@ -1633,11 +1683,14 @@ async function showSSPoster(movie) {
   const posterUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
 
   // Await load only if not already cached
+  // Never wait forever on an image — a stalled load used to kill the rotation
   await new Promise(resolve => {
     const img = new Image();
+    const t = setTimeout(resolve, 8000);
+    const done = () => { clearTimeout(t); resolve(); };
+    img.onload = img.onerror = done;
     img.src = posterUrl;
-    if (img.complete) { resolve(); return; }
-    img.onload = img.onerror = resolve;
+    if (img.complete) done();
   });
 
   backLayer.style.backgroundImage = `url(${posterUrl})`;
