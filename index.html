@@ -678,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">September 21, 2026 @ 3:31pm</span>
+        Last Updated: <span style="color:#7a6a50;">September 21, 2026 @ 3:38pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1602,6 +1602,21 @@ function ssOnTrailerEnd() {
     if (frame) { frame.innerHTML = ''; frame.style.opacity = '0'; }
   }, 350);
 
+  // Force the visible poster to re-decode. On the TV, the video decoder can
+  // evict the poster's GPU texture during a trailer, leaving only the layer's
+  // black background once the trailer card fades away.
+  setTimeout(() => {
+    if (!ss.active) return;
+    const front = document.getElementById(ss.front === 'a' ? 'ss-layer-a' : 'ss-layer-b');
+    const bg = front.style.backgroundImage;
+    if (bg && bg !== 'none') {
+      front.style.backgroundImage = 'none';
+      void front.offsetWidth;
+      front.style.backgroundImage = bg;
+      console.log('[SS] Repainted poster after trailer');
+    }
+  }, 380);
+
   // Fade poster info back in
   setTimeout(() => {
     if (ss.active) document.getElementById('ss-info').classList.add('show');
@@ -1689,6 +1704,30 @@ setInterval(async () => {
   } catch (e) { /* offline — try again next check */ }
 }, 10 * 60 * 1000);
 
+// ── Debug HUD (?debug=1) ────────────────────────────────────────────────────
+if (new URLSearchParams(location.search).get('debug') === '1') {
+  const hud = document.createElement('div');
+  hud.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;max-width:90vw;padding:6px 8px;' +
+    'font:11px/1.35 monospace;color:#0f0;background:rgba(0,0,0,0.7);pointer-events:none;white-space:pre-wrap;';
+  document.body.appendChild(hud);
+  const log = [];
+  const tap = (orig, tag) => (...a) => {
+    orig.apply(console, a);
+    const msg = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+    if (/^\[(SS|WD|NP)\]/.test(msg)) { log.push(new Date().toLocaleTimeString() + ' ' + tag + msg); if (log.length > 8) log.shift(); }
+  };
+  console.log = tap(console.log, ''); console.warn = tap(console.warn, '⚠ ');
+  setInterval(() => {
+    const la = document.getElementById('ss-layer-a'), lb = document.getElementById('ss-layer-b');
+    const img = el => (el.style.backgroundImage || 'none') === 'none' ? 'none' : 'img';
+    hud.textContent =
+      `idle:${state.idle} ss:${ss.active} trailer:${ss.trailerPlaying} front:${ss.front} fails:${ss.failStreak}\n` +
+      `A op:${la.style.opacity || '1'} ${img(la)} | B op:${lb.style.opacity || '0'} ${img(lb)}\n` +
+      `slide:${ss.movies[ss.currentIdx]?.title || '-'} (${Math.round((Date.now() - ss.lastSlideAt) / 1000)}s ago)\n` +
+      log.join('\n');
+  }, 1000);
+}
+
 // TV waking from standby: check status right away instead of waiting a cycle
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.pollInterval) poll();
@@ -1724,6 +1763,12 @@ async function showSSPoster(movie) {
     frontLayer.style.opacity = '0';
     backLayer.style.opacity  = '1';
     ss.front = isAFront ? 'b' : 'a';
+    // Once the 1.4s crossfade is done, drop the now-hidden layer's image so the
+    // TV only holds one full-size poster texture at a time
+    const gen = ss.gen;
+    setTimeout(() => {
+      if (gen === ss.gen && frontLayer.style.opacity === '0') frontLayer.style.backgroundImage = 'none';
+    }, 1600);
   }, 80);
 
   const genreMap = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
