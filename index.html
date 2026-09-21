@@ -678,9 +678,10 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">September 21, 2026 @ 3:38pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 3:47pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
         <button class="btn-launch" onclick="launch()" style="margin:0;">▶ &nbsp; Launch Cinema Display</button>
       </div>
@@ -1695,13 +1696,39 @@ setInterval(() => {
 // Every 6h, if idle and between trailers, reload — but only if the page is
 // reachable, so a network outage never replaces the screen with an error page.
 const PAGE_BOOTED_AT = Date.now();
-setInterval(async () => {
-  if (Date.now() - PAGE_BOOTED_AT < 6 * 60 * 60 * 1000) return;
-  if (!state.idle || ss.trailerPlaying || state._handlingMovie) return;
+
+// Cache-busting reload: refreshes the browser's cached copy, then reopens the
+// page with a unique ?v= so neither Fully Kiosk nor the CDN can serve a stale one.
+function hardRefresh() {
+  const u = new URL(location.href);
+  u.searchParams.set('v', Date.now());
+  fetch(location.pathname, { cache: 'reload' })
+    .catch(() => {})
+    .finally(() => location.replace(u.toString()));
+}
+
+// Fetch the live page and pull its Last Updated stamp (null if unreachable)
+async function fetchRemoteStamp() {
   try {
-    const r = await fetch(location.href, { cache: 'no-store' });
-    if (r.ok) location.reload();
-  } catch (e) { /* offline — try again next check */ }
+    const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return null;
+    const html = await r.text();
+    return html.match(/id="build-stamp"[^>]*>([^<]*)/)?.[1]?.trim() || null;
+  } catch (e) { return null; }
+}
+
+setInterval(async () => {
+  if (!state.idle || ss.trailerPlaying || state._handlingMovie) return;
+  const remote = await fetchRemoteStamp();
+  if (!remote) return;   // offline — never reload into an error page
+  const local = document.getElementById('build-stamp')?.textContent.trim();
+  if (remote !== local) {
+    console.log('[WD] New version found (' + remote + '), refreshing');
+    hardRefresh();
+  } else if (Date.now() - PAGE_BOOTED_AT > 6 * 60 * 60 * 1000) {
+    console.log('[WD] 6h memory refresh');
+    hardRefresh();
+  }
 }, 10 * 60 * 1000);
 
 // ── Debug HUD (?debug=1) ────────────────────────────────────────────────────
