@@ -678,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 4:14pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 4:42pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1274,7 +1274,14 @@ async function handleNowPlaying(movie, source) {
   // Movie may have stopped while TMDB was loading — don't repaint a dead title
   if (state.idle || state.currentMovie !== key) { console.log('[NP] Went idle during lookup, dropping'); return; }
 
-  if (!tmdbData) { showToast('Could not find metadata for: ' + movie.title); return; }
+  if (!tmdbData) {
+    // No match anywhere — show the title the player reported, nothing stale
+    console.log('[NP] No TMDB match, showing title only:', movie.title);
+    resetNowPlaying();
+    animateInfoIn({ title: movie.title, year: movie.year, rating: null, mpaa: '—', runtime: null, genres: [] }, source);
+    document.getElementById('time-start').textContent = formatTime(new Date());
+    return;
+  }
 
   // Set start time
   if (movie.viewOffsetMs) {
@@ -1309,6 +1316,28 @@ async function handleNowPlaying(movie, source) {
   updateElapsed();
 }
 
+// Wipe everything the last title left behind in the now-playing view.
+// removeAttribute('src') rather than src='' — some Android WebViews keep
+// painting the old image when src is set to an empty string.
+function resetNowPlaying() {
+  const img = document.getElementById('poster-img');
+  img.onload = null;
+  img.classList.add('loading');
+  img.classList.remove('ken-burns');
+  img.removeAttribute('src');
+  document.getElementById('poster-placeholder').classList.add('visible');
+  document.getElementById('ambient-bg').style.backgroundImage = '';
+  document.getElementById('progress-bar').style.width = '0%';
+  ['time-start', 'time-end', 'time-elapsed'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+  document.getElementById('trailer-btn').classList.remove('visible');
+  state.startTime = null;
+  state.trailerKey = null;
+  if (state.elapsedInterval) { clearInterval(state.elapsedInterval); state.elapsedInterval = null; }
+}
+
 function setIdle() {
   state.idle = true;
   state.currentMovie = null;
@@ -1327,13 +1356,7 @@ function setIdle() {
   // now-playing view on its own.
   document.getElementById('app').classList.add('visible');
 
-  // Reset now-playing poster
-  const img = document.getElementById('poster-img');
-  img.classList.add('loading');
-  img.src = '';
-  document.getElementById('poster-placeholder').classList.add('visible');
-  document.getElementById('progress-bar').style.width = '0%';
-  document.getElementById('ambient-bg').style.backgroundImage = '';
+  resetNowPlaying();
 
   // Launch screensaver
   startScreensaver();
@@ -1342,10 +1365,10 @@ function setIdle() {
 // ═══════════════════════════════════════
 // SCREENSAVER ENGINE — fullscreen poster
 // ═══════════════════════════════════════
-// Screensaver poster size. 'original' (~2000x3000, ~24MB decoded each) was
-// crashing the TV's browser once a YouTube trailer started on top of it.
-// w780 is ~3.6MB decoded. Options: w500, w780, original.
-const SS_POSTER_SIZE = 'w780';
+// Screensaver poster size. Options: w500, w780, original (~2000x3000).
+// Was temporarily w780 while chasing black screens — that turned out to be
+// a visibility bug, not memory, so full resolution is back.
+const SS_POSTER_SIZE = 'original';
 
 // Diagnostic switch: add ?trailers=0 to the URL for posters only (15s each)
 const SS_TRAILERS = new URLSearchParams(location.search).get('trailers') !== '0';
@@ -1868,18 +1891,62 @@ document.addEventListener('touchstart', () => {
 // ═══════════════════════════════════════
 // TMDB FETCH
 // ═══════════════════════════════════════
+// Pull "(Season 1)", ": Season 2", "- Season 3", "S04" off a title
+function parseSeason(title) {
+  const m = title.match(/\s*(?:[\(\[]\s*season\s*(\d+)\s*[\)\]]|[:\-–]\s*season\s*(\d+)|\bseason\s*(\d+)$|\bS(\d{1,2})$)/i);
+  if (!m) return { show: title, season: null };
+  return { show: title.slice(0, m.index).trim(), season: parseInt(m[1] || m[2] || m[3] || m[4], 10) };
+}
+
+async function fetchTMDBTV(title, key) {
+  const { show, season } = parseSeason(title);
+  console.log('[TMDB] Trying TV:', show, season ? 'season ' + season : '');
+  const sr = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${encodeURIComponent(show)}`);
+  const sd = await sr.json();
+  if (!sd.results?.length) return null;
+  const lower = show.toLowerCase();
+  const best = sd.results.find(r => r.name?.toLowerCase() === lower || r.original_name?.toLowerCase() === lower) || sd.results[0];
+
+  const [dRes, vRes, cRes, sRes] = await Promise.all([
+    fetch(`https://api.themoviedb.org/3/tv/${best.id}?api_key=${key}`),
+    fetch(`https://api.themoviedb.org/3/tv/${best.id}/videos?api_key=${key}`),
+    fetch(`https://api.themoviedb.org/3/tv/${best.id}/content_ratings?api_key=${key}`),
+    season ? fetch(`https://api.themoviedb.org/3/tv/${best.id}/season/${season}?api_key=${key}`) : Promise.resolve(null),
+  ]);
+  const d = await dRes.json(), v = await vRes.json(), c = await cRes.json();
+  const sd2 = sRes && sRes.ok ? await sRes.json() : null;
+  const trailer = v.results?.find(x => x.type === 'Trailer' && x.site === 'YouTube' && x.official)
+               || v.results?.find(x => x.type === 'Trailer' && x.site === 'YouTube');
+  return {
+    id: best.id,
+    title: season ? `${d.name} (Season ${season})` : d.name,
+    year: (sd2?.air_date || d.first_air_date || '').split('-')[0],
+    runtime: d.episode_run_time?.[0] || null,
+    rating: d.vote_average,
+    genres: d.genres?.slice(0,3).map(g => g.name) || [],
+    posterPath: sd2?.poster_path || d.poster_path,   // season poster when we have one
+    backdropPath: d.backdrop_path,
+    trailerKey: trailer?.key || null,
+    mpaa: c.results?.find(r => r.iso_3166_1 === 'US')?.rating || '—',
+    overview: sd2?.overview || d.overview,
+  };
+}
+
 async function fetchTMDB(title, year, tmdbId) {
   const key = state.config.tmdbKey;
   if (!key) return null;
   console.log('[TMDB] Searching for:', title, year);
   try {
+    // Titles with a season marker are TV — go straight there
+    if (!tmdbId && parseSeason(title).season) return await fetchTMDBTV(title, key);
+
     let movieId = tmdbId;
     if (!movieId) {
       const q = encodeURIComponent(title);
       const yr = year ? `&year=${year}` : '';
       const sr = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}${yr}`);
       const sd = await sr.json();
-      if (!sd.results?.length) return null;
+      if (!sd.results?.length) return await fetchTMDBTV(title, key);   // not a movie — try TV
 
       // Find best match: prefer exact title match, then closest year
       const titleLower = title.toLowerCase().trim();
