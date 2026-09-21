@@ -678,7 +678,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span style="color:#7a6a50;">September 21, 2026 @ 2:57pm</span>
+        Last Updated: <span style="color:#7a6a50;">September 21, 2026 @ 3:31pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
@@ -1356,6 +1356,7 @@ const ss = {
   POSTER_DURATION: 5000,   // ms to show poster before trailer starts
   gen: 0,                  // bumps on every start/stop so stale slide chains exit
   lastSlideAt: 0,          // timestamp of last slide change (used by watchdog)
+  failStreak: 0,           // consecutive posters that failed to load
 };
 
 async function fetchScreensaverPool() {
@@ -1460,8 +1461,17 @@ async function runSSSlide(idx) {
   frame.src = '';
   if (titleEl) titleEl.textContent = '';
 
-  await showSSPoster(movie);
+  const ok = await showSSPoster(movie);
   if (!ss.active || gen !== ss.gen) return;   // stopped/restarted while poster loaded
+  if (!ok) {
+    // Current poster stays on screen. Try the next one shortly; if lots fail
+    // in a row (network down), wait longer before trying again.
+    ss.failStreak++;
+    const wait = ss.failStreak >= 5 ? 30000 : 1000;
+    ss._posterDwellTimeout = setTimeout(() => { if (ss.active && gen === ss.gen) ssAdvance(); }, wait);
+    return;
+  }
+  ss.failStreak = 0;
   startSSProgress(ss.POSTER_DURATION);
 
   // Step 1 — after 5s poster dwell, start trailer (or skip straight to advance)
@@ -1666,6 +1676,19 @@ setInterval(() => {
   }
 }, 30000);
 
+// Long-running WebViews slowly leak memory (big posters, YouTube iframes).
+// Every 6h, if idle and between trailers, reload — but only if the page is
+// reachable, so a network outage never replaces the screen with an error page.
+const PAGE_BOOTED_AT = Date.now();
+setInterval(async () => {
+  if (Date.now() - PAGE_BOOTED_AT < 6 * 60 * 60 * 1000) return;
+  if (!state.idle || ss.trailerPlaying || state._handlingMovie) return;
+  try {
+    const r = await fetch(location.href, { cache: 'no-store' });
+    if (r.ok) location.reload();
+  } catch (e) { /* offline — try again next check */ }
+}, 10 * 60 * 1000);
+
 // TV waking from standby: check status right away instead of waiting a cycle
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.pollInterval) poll();
@@ -1682,16 +1705,17 @@ async function showSSPoster(movie) {
 
   const posterUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
 
-  // Await load only if not already cached
-  // Never wait forever on an image — a stalled load used to kill the rotation
-  await new Promise(resolve => {
+  // Load with a timeout, and report whether it actually succeeded. Never swap
+  // to a layer whose image didn't load — that is what produced black screens.
+  const loaded = await new Promise(resolve => {
     const img = new Image();
-    const t = setTimeout(resolve, 8000);
-    const done = () => { clearTimeout(t); resolve(); };
-    img.onload = img.onerror = done;
+    const t = setTimeout(() => resolve(false), 15000);
+    img.onload  = () => { clearTimeout(t); resolve(img.naturalWidth > 0); };
+    img.onerror = () => { clearTimeout(t); resolve(false); };
     img.src = posterUrl;
-    if (img.complete) done();
+    if (img.complete && img.naturalWidth > 0) { clearTimeout(t); resolve(true); }
   });
+  if (!loaded) { console.warn('[SS] Poster failed to load, keeping current:', movie.title); return false; }
 
   backLayer.style.backgroundImage = `url(${posterUrl})`;
   infoEl.classList.remove('show');
@@ -1725,6 +1749,7 @@ async function showSSPoster(movie) {
     genres.map(g => `<span class="ss-genre">${g}</span>`).join('');
 
   setTimeout(() => { if (ss.active && !ss.trailerPlaying) infoEl.classList.add('show'); }, 800);
+  return true;
 }
 
 function startSSProgress(duration) {
