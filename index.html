@@ -349,11 +349,6 @@
   #times-row { display: none; }
   #np-content { display: none; }
   #trailer-btn { display: none; }
-    border-style: solid;
-    border-width: 5px 0 5px 9px;
-    border-color: transparent transparent transparent var(--gold);
-    margin-left: 2px;
-  }
 
   /* ─── TRAILER MODAL ─── */
   #trailer-modal {
@@ -613,14 +608,16 @@
     width: 100%;
     height: 100%;
   }
-  /* iframe sized to 16:9 and centered — crops YouTube chrome top/bottom */
+  /* iframe is 4:3 inside the 16:9 frame — the extra height above and below
+     crops YouTube's title bar and controls, without inflating the player size
+     YouTube uses to pick stream quality (was 56.25vw ≈ 1080px tall, which made
+     it fetch 1080p+ for a ~360px-tall card) */
   #ss-trailer-frame iframe {
     position: absolute;
     top: 50%;
     left: 50%;
     width: 100% !important;
-    height: 56.25vw !important;
-    max-height: 300% !important;
+    height: 150% !important;
     transform: translate(-50%, -50%);
     border: none;
     display: block;
@@ -678,7 +675,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">September 21, 2026 @ 4:42pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:00pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -903,6 +900,9 @@
     <div id="times-row">
       <div class="time-cell"><span class="tc-label"></span><span class="tc-value running" id="time-elapsed-hidden"></span></div>
     </div>
+    <!-- trailer-btn was referenced by JS but missing from the page, which threw
+         errors in setIdle()/handleNowPlaying(). Kept hidden, for compatibility. -->
+    <button id="trailer-btn" onclick="openTrailer()"></button>
   </div>
 
   </div><!-- #np-content removed, kept for structure -->
@@ -1387,6 +1387,7 @@ const ss = {
   _trailerResolve: null,
   _trailerTimeout: null,
   _posterDwellTimeout: null,
+  _preloadTimeout: null,
   POSTER_DURATION: SS_TRAILERS ? 5000 : 15000,   // ms to show poster before trailer starts
   gen: 0,                  // bumps on every start/stop so stale slide chains exit
   lastSlideAt: 0,          // timestamp of last slide change (used by watchdog)
@@ -1473,7 +1474,8 @@ function ssClearTimers() {
   clearTimeout(ss.trailerTimer);
   clearTimeout(ss._trailerTimeout);
   clearTimeout(ss._posterDwellTimeout);
-  ss.trailerTimer = ss._trailerTimeout = ss._posterDwellTimeout = null;
+  clearTimeout(ss._preloadTimeout);
+  ss.trailerTimer = ss._trailerTimeout = ss._posterDwellTimeout = ss._preloadTimeout = null;
 }
 
 async function runSSSlide(idx) {
@@ -1536,6 +1538,11 @@ window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 // Fallback max duration if ENDED event never fires (e.g. network issue)
 const TRAILER_MAX_MS = 4 * 60 * 1000;
 
+// How long a trailer plays before we start downloading the next poster.
+// Original-size posters are several MB; fetching one while YouTube is filling
+// its initial buffer caused visible stalls on the TV.
+const PRELOAD_DELAY_MS = 30000;
+
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
   ss.trailerPlaying = true;
@@ -1559,12 +1566,15 @@ function ssStartTrailer(key, title) {
   ss._trailerTimeout = setTimeout(() => { console.warn('[SS] Trailer hit max length'); ssOnTrailerEnd(); }, TRAILER_MAX_MS);
   console.log('[SS] Trailer start: ' + title);
 
-  // Preload next poster while trailer plays
+  // Preload next poster once the trailer has built up its buffer
   const nextMovie = ss.movies[(ss.currentIdx + 1) % ss.movies.length];
-  if (nextMovie?.poster_path) {
+  clearTimeout(ss._preloadTimeout);
+  ss._preloadTimeout = setTimeout(() => {
+    ss._preloadTimeout = null;
+    if (!ss.active || !ss.trailerPlaying || !nextMovie?.poster_path) return;
     const pre = new Image();
     pre.src = `https://image.tmdb.org/t/p/${SS_POSTER_SIZE}${nextMovie.poster_path}`;
-  }
+  }, PRELOAD_DELAY_MS);
 
   function createYTPlayer() {
     if (ytPlayer) {
@@ -1593,6 +1603,13 @@ function ssStartTrailer(key, title) {
             // Fade in only once playback actually starts — hides loading frame
             const frame = document.getElementById('ss-trailer-frame');
             if (frame) frame.style.opacity = '1';
+          }
+          if (e.data === YT.PlayerState.BUFFERING) {
+            // Shows in the ?debug=1 HUD — tells us whether stalls persist and
+            // what quality YouTube picked (expect 'large'/'hd720', not 'hd1080'+)
+            let q = '?';
+            try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
+            console.log('[SS] Buffering — quality: ' + q);
           }
           if (e.data === YT.PlayerState.ENDED) { console.log('[SS] Trailer ended normally'); ssOnTrailerEnd(); }
         },
