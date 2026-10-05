@@ -173,16 +173,28 @@
   @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ─── MAIN DISPLAY ─── */
+  /* The TV is rotated to portrait at the system level (adb user_rotation 1),
+     so the page renders upright with no CSS rotation — rotating video in CSS
+     made trailers stall and crashed the browser. If the TV ever reverts to
+     landscape (e.g. after a reset), the media query below falls back to the
+     old CSS rotation automatically. Sizes inside #app use vmax/vmin so the
+     layout is identical either way. */
   #app {
     position: fixed;
     top: 50%; left: 50%;
-    width: 100vh; height: 100vw;
-    transform: translate(-50%, -50%) rotate(90deg);
+    width: 100vw; height: 100vh;
+    transform: translate(-50%, -50%);
     transform-origin: center center;
     display: flex; flex-direction: column; align-items: stretch;
     opacity: 0; transition: opacity 1s; overflow: hidden;
   }
   #app.visible { opacity: 1; }
+  @media (orientation: landscape) {
+    #app {
+      width: 100vh; height: 100vw;
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+  }
 
   #ambient-bg {
     position: absolute; inset: -40px;
@@ -204,20 +216,20 @@
   #np-topbar {
     position: relative; z-index: 10; flex-shrink: 0;
     width: 100%; display: flex; align-items: center; justify-content: space-between;
-    padding: clamp(6px,1.2vh,14px) clamp(12px,3vw,36px);
+    padding: clamp(6px,1.2vmin,14px) clamp(12px,3vmax,36px);
     gap: 8px;
   }
   .np-time-block {
     display: flex; flex-direction: column; align-items: center;
-    flex-shrink: 0; min-width: clamp(60px,10vw,100px);
+    flex-shrink: 0; min-width: clamp(60px,10vmax,100px);
   }
   .np-time-label {
-    font-size: clamp(7px,0.85vw,10px); letter-spacing: 0.28em; text-transform: uppercase;
+    font-size: clamp(7px,0.85vmax,10px); letter-spacing: 0.28em; text-transform: uppercase;
     color: var(--gold-dim); margin-bottom: 2px;
   }
   .np-time-value {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(14px,2vw,22px); font-weight: 300; color: var(--cream);
+    font-size: clamp(14px,2vmax,22px); font-weight: 300; color: var(--cream);
   }
   #np-banner-wrap {
     flex: 1; display: flex; justify-content: center; align-items: center;
@@ -236,7 +248,7 @@
     position: relative; z-index: 10;
     flex: 1; display: flex; align-items: center; justify-content: center;
     min-height: 0; overflow: hidden;
-    padding: 0 clamp(12px, 3vw, 40px);
+    padding: 0 clamp(12px, 3vmax, 40px);
   }
   .poster-frame {
     position: relative;
@@ -281,8 +293,8 @@
   #info-area {
     position: relative; z-index: 10; flex-shrink: 0;
     width: 100%; display: flex; align-items: flex-start;
-    padding: clamp(8px,1.4vh,16px) clamp(16px,4vw,50px);
-    gap: clamp(10px,2vw,24px);
+    padding: clamp(8px,1.4vmin,16px) clamp(16px,4vmax,50px);
+    gap: clamp(10px,2vmax,24px);
     border-top: 1px solid rgba(201,168,76,0.12);
     background: rgba(0,0,0,0.3);
     opacity: 0; transform: translateY(10px);
@@ -294,10 +306,10 @@
   }
   #movie-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(16px,2.8vw,38px);
+    font-size: clamp(16px,2.8vmax,38px);
     font-weight: 300; line-height: 1; color: var(--cream);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: clamp(120px, 28vw, 280px);
+    max-width: clamp(120px, 28vmax, 280px);
     opacity: 0; transform: translateY(8px);
     transition: all var(--transition) 0.08s;
   }
@@ -305,41 +317,41 @@
   #movie-title em { font-style: italic; color: rgba(240,232,216,0.6); }
   #movie-year {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(10px,1.3vw,14px); font-style: italic;
+    font-size: clamp(10px,1.3vmax,14px); font-style: italic;
     color: var(--gold-dim); letter-spacing: 0.1em; margin-top: 2px;
     opacity: 0; transition: opacity var(--transition) 0.14s;
   }
   #movie-year.visible { opacity: 1; }
   #info-right {
-    flex: 1; display: flex; flex-direction: column; gap: clamp(4px,0.7vh,8px); min-width: 0;
+    flex: 1; display: flex; flex-direction: column; gap: clamp(4px,0.7vmin,8px); min-width: 0;
   }
   #ratings-row {
-    display: flex; align-items: center; gap: clamp(6px,1vw,14px); flex-wrap: wrap;
+    display: flex; align-items: center; gap: clamp(6px,1vmax,14px); flex-wrap: wrap;
     opacity: 0; transition: opacity var(--transition) 0.22s;
   }
   #ratings-row.visible { opacity: 1; }
   .rating-badge { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .rating-badge .source { font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.2em; color: #6a5a40; text-transform: uppercase; }
+  .rating-badge .source { font-size: clamp(6px,0.75vmax,8px); letter-spacing: 0.2em; color: #6a5a40; text-transform: uppercase; }
   .rating-badge .score {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(13px,1.8vw,22px); font-weight: 400; color: var(--cream); line-height: 1;
+    font-size: clamp(13px,1.8vmax,22px); font-weight: 400; color: var(--cream); line-height: 1;
   }
   .rating-badge .score.gold { color: var(--gold); }
-  .rating-badge .stars { color: var(--gold); font-size: clamp(6px,0.8vw,9px); letter-spacing: 1px; }
+  .rating-badge .stars { color: var(--gold); font-size: clamp(6px,0.8vmax,9px); letter-spacing: 1px; }
   .rating-sep { width: 1px; height: 22px; background: var(--border); }
-  .mpaa-badge { padding: 2px 5px; border: 1px solid rgba(201,168,76,0.3); font-size: clamp(7px,0.9vw,10px); font-weight: 600; color: var(--cream); border-radius: 2px; }
+  .mpaa-badge { padding: 2px 5px; border: 1px solid rgba(201,168,76,0.3); font-size: clamp(7px,0.9vmax,10px); font-weight: 600; color: var(--cream); border-radius: 2px; }
   #genres {
     display: flex; gap: 4px; flex-wrap: wrap; align-items: center;
     opacity: 0; transition: opacity var(--transition) 0.28s;
   }
   #genres.visible { opacity: 1; }
-  .genre-tag { padding: 1px 6px; border: 1px solid var(--border); font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.14em; text-transform: uppercase; color: #8a7a60; border-radius: 2px; }
+  .genre-tag { padding: 1px 6px; border: 1px solid var(--border); font-size: clamp(6px,0.75vmax,8px); letter-spacing: 0.14em; text-transform: uppercase; color: #8a7a60; border-radius: 2px; }
   #source-row {
     display: flex; align-items: center; gap: 8px;
     opacity: 0; transition: opacity var(--transition) 0.36s;
   }
   #source-row.visible { opacity: 1; }
-  .source-indicator { display: flex; align-items: center; gap: 5px; font-size: clamp(6px,0.75vw,8px); letter-spacing: 0.15em; color: #5a4a30; text-transform: uppercase; }
+  .source-indicator { display: flex; align-items: center; gap: 5px; font-size: clamp(6px,0.75vmax,8px); letter-spacing: 0.15em; color: #5a4a30; text-transform: uppercase; }
   .source-indicator .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
   .source-indicator .dot.idle { background: #4a3a20; }
 
@@ -396,7 +408,7 @@
   #idle-display.show { opacity: 1; }
   #clock {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(80px, 14vw, 200px);
+    font-size: clamp(80px, 14vmax, 200px);
     font-weight: 300; color: rgba(240,232,216,0.12);
     letter-spacing: -0.04em; line-height: 1;
   }
@@ -453,14 +465,14 @@
     flex-shrink: 0;
     width: 100%;
     display: flex; justify-content: center; align-items: center;
-    padding: clamp(8px, 2vw, 20px) clamp(20px, 8vw, 120px) clamp(4px, 1vw, 10px);
+    padding: clamp(8px, 2vmax, 20px) clamp(20px, 8vmax, 120px) clamp(4px, 1vmax, 10px);
     opacity: 0; transform: translateY(-10px);
     transition: opacity 0.9s ease 0.2s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s;
   }
   #ss-banner.show { opacity: 1; transform: none; }
   #ss-banner img {
     width: 100%;
-    max-width: clamp(260px, 80vw, 780px);
+    max-width: clamp(260px, 80vmax, 780px);
     height: auto;
     display: block;
     filter: drop-shadow(0 6px 24px rgba(0,0,0,0.8));
@@ -506,7 +518,7 @@
   /* Info bar — bottom of poster area */
   #ss-info {
     position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-    padding: clamp(16px, 3vw, 36px) clamp(20px, 4vw, 52px);
+    padding: clamp(16px, 3vmax, 36px) clamp(20px, 4vmax, 52px);
     opacity: 0; transform: translateY(12px);
     transition: opacity 1s ease 0.3s, transform 1s cubic-bezier(0.22,1,0.36,1) 0.3s;
   }
@@ -514,7 +526,7 @@
 
   #ss-movie-name {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(22px, 4.5vw, 64px);
+    font-size: clamp(22px, 4.5vmax, 64px);
     font-weight: 300; line-height: 1;
     color: #fff;
     letter-spacing: -0.02em;
@@ -558,7 +570,7 @@
   #ss-trailer-wrap {
     position: absolute; inset: 0; z-index: 20;
     display: flex; align-items: flex-end; justify-content: center;
-    padding-bottom: clamp(60px, 12vh, 140px);
+    padding-bottom: clamp(60px, 12vmin, 140px);
     background: rgba(0,0,0,0);
     opacity: 0; pointer-events: none;
     transition: opacity 0.35s ease;
@@ -571,13 +583,13 @@
   /* Card centered over the poster */
   #ss-trailer-card {
     position: relative;
-    width: clamp(260px, 46vw, 640px);
+    width: clamp(260px, 46vmax, 640px);
     display: flex; flex-direction: column;
   }
 
   #ss-trailer-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(14px, 2vw, 22px);
+    font-size: clamp(14px, 2vmax, 22px);
     font-weight: 300; letter-spacing: 0.06em;
     color: var(--cream);
     text-align: center;
@@ -682,7 +694,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 10:57am</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 11:48am</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1380,15 +1392,9 @@ const SS_POSTER_SIZE = 'original';
 // Diagnostic switch: add ?trailers=0 to the URL for posters only (15s each)
 const SS_TRAILERS = new URLSearchParams(location.search).get('trailers') !== '0';
 
-// Diagnostic switch: add ?norotate=1 to turn off the 90° CSS rotation. The
-// layout will be sideways — this only exists to test whether compositing video
-// inside a rotated layer is what makes trailers stall on the TV.
-const NO_ROTATE = new URLSearchParams(location.search).get('norotate') === '1';
-if (NO_ROTATE) {
-  const st = document.createElement('style');
-  st.textContent = '#app{width:100vw!important;height:100vh!important;transform:translate(-50%,-50%)!important;}';
-  document.head.appendChild(st);
-}
+// True when the TV itself is in portrait and no CSS rotation is applied.
+// Logged with trailer stats so the debug HUD shows which mode is active.
+const NO_ROTATE = !matchMedia('(orientation: landscape)').matches;
 
 const ss = {
   movies: [],
@@ -1637,7 +1643,7 @@ function ssStartTrailer(key, title) {
               ss._loggedQuality = true;
               let q = '?';
               try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
-              console.log('[SS] Playing — quality: ' + q + (NO_ROTATE ? ' (norotate)' : ''));
+              console.log('[SS] Playing — quality: ' + q + (NO_ROTATE ? ' (upright)' : ' (CSS-rotated)'));
             }
           }
           if (e.data === YT.PlayerState.BUFFERING || e.data === YT.PlayerState.PAUSED) {
