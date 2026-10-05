@@ -601,6 +601,16 @@
     transition: opacity 0.3s ease;
     position: relative;
   }
+  /* Black cover over the YouTube player. YouTube draws its title bar,
+     "More videos" panel and play icon at the start of a video and whenever it
+     buffers — the cover hides those moments and lifts once video is playing */
+  #ss-trailer-cover {
+    position: absolute; inset: 0; z-index: 2;
+    background: #000;
+    opacity: 1; transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  #ss-trailer-cover.lifted { opacity: 0; }
   /* Inner wrapper fills the container exactly */
   #ss-yt-player {
     position: absolute;
@@ -672,7 +682,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:00pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 10:57am</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1592,7 +1602,7 @@ function ssStartTrailer(key, title) {
     }
     // YT.Player needs a target element — create a fresh inner div to mount into
     const frame = document.getElementById('ss-trailer-frame');
-    frame.innerHTML = '<div id="ss-yt-player"></div>';
+    frame.innerHTML = '<div id="ss-yt-player"></div><div id="ss-trailer-cover"></div>';
 
     ytPlayer = new YT.Player('ss-yt-player', {
       videoId: key,
@@ -1618,6 +1628,10 @@ function ssStartTrailer(key, title) {
             // Fade in only once playback actually starts — hides loading frame
             const frame = document.getElementById('ss-trailer-frame');
             if (frame) frame.style.opacity = '1';
+            // First start: YouTube's title bar stays up for the first few
+            // seconds, so keep the cover on a little longer. After a stall,
+            // lift it quickly.
+            ssLiftCover(ss._loggedQuality ? COVER_RESUME_MS : COVER_START_MS);
             if (!ss._loggedQuality) {
               ssHideCaptions(e.target);
               ss._loggedQuality = true;
@@ -1625,6 +1639,9 @@ function ssStartTrailer(key, title) {
               try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
               console.log('[SS] Playing — quality: ' + q + (NO_ROTATE ? ' (norotate)' : ''));
             }
+          }
+          if (e.data === YT.PlayerState.BUFFERING || e.data === YT.PlayerState.PAUSED) {
+            ssDropCover();
           }
           if (e.data === YT.PlayerState.BUFFERING && ss._loggedQuality) {
             // Mid-trailer stalls only (the initial load also reports BUFFERING).
@@ -1652,6 +1669,26 @@ function ssStartTrailer(key, title) {
       if (ytApiReady) { clearInterval(poll); if (ss.trailerPlaying) createYTPlayer(); }
     }, 100);
   }
+}
+
+// How long the black cover stays up after playback starts (first start) or
+// resumes (after a stall), so YouTube's overlays have time to fade away
+const COVER_START_MS  = 3000;
+const COVER_RESUME_MS = 700;
+let ssCoverTimer = null;
+
+function ssLiftCover(delay) {
+  clearTimeout(ssCoverTimer);
+  ssCoverTimer = setTimeout(() => {
+    const c = document.getElementById('ss-trailer-cover');
+    if (c && ytPlayer?.getPlayerState?.() === YT.PlayerState.PLAYING) c.classList.add('lifted');
+  }, delay);
+}
+
+function ssDropCover() {
+  clearTimeout(ssCoverTimer);
+  const c = document.getElementById('ss-trailer-cover');
+  if (c) c.classList.remove('lifted');
 }
 
 function ssHideCaptions(p) {
