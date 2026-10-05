@@ -694,7 +694,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:03pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:10pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1679,7 +1679,7 @@ function ssStartTrailer(key, title) {
 
 // How long the black cover stays up after playback starts (first start) or
 // resumes (after a stall), so YouTube's overlays have time to fade away
-const COVER_START_MS  = 6000;   // title bar lingers ~4-5s after playback starts
+const COVER_START_MS  = 4500;   // title bar lingers ~4-5s after playback starts; raise if it peeks through
 const COVER_RESUME_MS = 700;
 let ssCoverTimer = null;
 
