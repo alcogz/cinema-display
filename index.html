@@ -97,9 +97,11 @@
 
   .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .setup-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .setup-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
   @media (max-width: 600px) {
     .setup-grid, .setup-grid.three { grid-template-columns: 1fr; }
+    .setup-grid.four { grid-template-columns: 1fr 1fr; }
   }
 
   .field {
@@ -117,6 +119,33 @@
     border-radius: var(--radius);
   }
   .field input:focus { border-color: var(--gold); }
+  .field select, .field textarea {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(201,168,76,0.2);
+    color: var(--cream); font-family: 'Rajdhani', sans-serif;
+    font-size: 14px; padding: 10px 14px;
+    outline: none; border-radius: var(--radius);
+  }
+  .field select:focus, .field textarea:focus { border-color: var(--gold); }
+  .field select option { background: #15110b; }
+  .field textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+  .field-hint { font-size: 11px; letter-spacing: 0.08em; color: #6a5a40; line-height: 1.5; }
+  .check-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 13px; color: #b8a888; letter-spacing: 0.08em; }
+  .check-row input { width: 18px; height: 18px; accent-color: #c9a84c; }
+  /* Genre chips cycle Any → Only → Never */
+  .genre-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .genre-chip {
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 8px 14px; min-height: 40px;
+    border-radius: var(--radius); cursor: pointer;
+    background: transparent; color: #8a7a60; border: 1px solid rgba(201,168,76,0.22);
+  }
+  .genre-chip:focus { outline: 2px solid #c9a84c; outline-offset: 2px; }
+  .genre-chip[data-state="only"]  { background: rgba(201,168,76,0.16); color: #f0e8d8; border-color: #c9a84c; }
+  .genre-chip[data-state="never"] { background: rgba(229,62,62,0.10); color: #fc8181; border-color: rgba(229,62,62,0.45); text-decoration: line-through; }
+  .poster-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .poster-actions .btn-demo { margin: 0; width: auto; padding: 12px 20px; }
+  #pc-status { font-size: 12px; letter-spacing: 0.12em; color: var(--green); }
   .field input::placeholder { color: #4a3f2a; }
 
   .setup-source-row {
@@ -722,7 +751,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:54pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:14pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -785,6 +814,64 @@
             <span style="font-size:11px;letter-spacing:0.15em;color:#5a4a30;" id="tmdb-status">Not tested</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="setup-section" id="poster-settings">
+      <div class="setup-section-label">Screensaver Posters</div>
+
+      <div class="field-hint" style="margin-bottom:10px;">Pages to pull from each list (20 titles per page, 0 = off)</div>
+      <div class="setup-grid four">
+        <div class="field"><label for="pc-upcoming">Coming Soon</label><input id="pc-upcoming" type="number" min="0" max="5" step="1"></div>
+        <div class="field"><label for="pc-now_playing">In Theaters</label><input id="pc-now_playing" type="number" min="0" max="5" step="1"></div>
+        <div class="field"><label for="pc-popular">Popular</label><input id="pc-popular" type="number" min="0" max="5" step="1"></div>
+        <div class="field"><label for="pc-top_rated">Top Rated</label><input id="pc-top_rated" type="number" min="0" max="5" step="1"></div>
+      </div>
+
+      <div class="setup-grid four" style="margin-top:12px;">
+        <div class="field"><label for="pc-minRating">Min Score</label><input id="pc-minRating" type="number" min="0" max="10" step="0.5"></div>
+        <div class="field"><label for="pc-minYear">From Year</label><input id="pc-minYear" type="number" min="1900" max="2100" placeholder="Any"></div>
+        <div class="field"><label for="pc-maxYear">To Year</label><input id="pc-maxYear" type="number" min="1900" max="2100" placeholder="Any"></div>
+        <div class="field"><label for="pc-poolSize">Titles in Rotation</label><input id="pc-poolSize" type="number" min="5" max="100" step="5"></div>
+      </div>
+
+      <div class="setup-grid" style="margin-top:12px;">
+        <div class="field">
+          <label for="pc-maxCert">Highest Age Rating</label>
+          <select id="pc-maxCert">
+            <option value="">Any</option>
+            <option value="G">G</option>
+            <option value="PG">PG</option>
+            <option value="PG-13">PG-13</option>
+            <option value="R">R</option>
+          </select>
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label class="check-row" for="pc-allowUnrated"><input id="pc-allowUnrated" type="checkbox"> Include unrated titles (most upcoming movies)</label>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label>Genres</label>
+        <div class="genre-chips" id="pc-genres"></div>
+        <div class="field-hint">Select a genre to cycle it: Any → Only these → Never</div>
+      </div>
+
+      <div class="setup-grid" style="margin-top:12px;">
+        <div class="field">
+          <label for="pc-include">Always Show</label>
+          <textarea id="pc-include" placeholder="One per line — a title or TMDB ID&#10;Jaws&#10;155"></textarea>
+        </div>
+        <div class="field">
+          <label for="pc-exclude">Never Show</label>
+          <textarea id="pc-exclude" placeholder="One per line — a title or TMDB ID"></textarea>
+        </div>
+      </div>
+
+      <div class="poster-actions">
+        <button class="btn-demo" onclick="savePosterSettings()">Save Poster Settings</button>
+        <button class="btn-demo" onclick="resetPosterSettings()">Reset to Defaults</button>
+        <span id="pc-status" role="status"></span>
       </div>
     </div>
 
@@ -1106,6 +1193,7 @@ function launch(auto = false) {
     }
     clearLaunchError();
     saveConfig(cfg);
+    savePosterSettings(true);
     document.getElementById('setup').classList.add('hidden');
     const app = document.getElementById('app');
     app.style.display = 'flex';
@@ -1137,6 +1225,7 @@ function clearLaunchError() {
 }
 
 function showSetup() {
+  fillPosterForm(POSTER_CONFIG);
   clearTimeout(autoLaunchTimer);   // don't auto-launch out from under the setup screen
   const cfg = state.config;
   document.getElementById('ks-ip').value = cfg.ksIP || '';
@@ -1511,7 +1600,9 @@ const ss = {
 // ═══════════════════════════════════════
 // POSTER SETTINGS — edit these to control which posters the screensaver shows
 // ═══════════════════════════════════════
-const POSTER_CONFIG = {
+// Defaults — the setup screen's "Screensaver Posters" section overrides these
+// on each device (saved in that browser), and "Reset to Defaults" returns here.
+const POSTER_DEFAULTS = {
   // TMDB lists to pull from, and how many pages (20 titles per page) of each.
   // Set a list to 0 to turn it off.
   sources: {
@@ -1545,6 +1636,115 @@ const POSTER_CONFIG = {
 
   poolSize: 40,        // how many titles to rotate through
 };
+
+const POSTER_STORE_KEY = 'cinemaPosterConfig';
+let POSTER_CONFIG = loadPosterConfig();
+
+function clonePosterDefaults() { return JSON.parse(JSON.stringify(POSTER_DEFAULTS)); }
+
+function loadPosterConfig() {
+  try {
+    const s = JSON.parse(localStorage.getItem(POSTER_STORE_KEY) || 'null');
+    if (!s) return clonePosterDefaults();
+    return { ...clonePosterDefaults(), ...s, sources: { ...POSTER_DEFAULTS.sources, ...(s.sources || {}) } };
+  } catch (e) { return clonePosterDefaults(); }
+}
+
+const POSTER_LISTS = ['upcoming', 'now_playing', 'popular', 'top_rated'];
+let posterGenreState = {};   // genre name → 'any' | 'only' | 'never'
+
+function fillPosterForm(cfg) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v ?? '') === null ? '' : (v ?? ''); };
+  POSTER_LISTS.forEach(l => set('pc-' + l, cfg.sources[l] ?? 0));
+  set('pc-minRating', cfg.minRating ?? 0);
+  set('pc-minYear', cfg.minYear ?? '');
+  set('pc-maxYear', cfg.maxYear ?? '');
+  set('pc-poolSize', cfg.poolSize);
+  set('pc-maxCert', cfg.maxCertification || '');
+  const unrated = document.getElementById('pc-allowUnrated');
+  if (unrated) unrated.checked = cfg.allowUnrated !== false;
+  set('pc-include', (cfg.include || []).join('\n'));
+  set('pc-exclude', (cfg.exclude || []).join('\n'));
+
+  posterGenreState = {};
+  Object.values(TMDB_GENRES).forEach(g => {
+    posterGenreState[g] = cfg.includeGenres.includes(g) ? 'only' : cfg.excludeGenres.includes(g) ? 'never' : 'any';
+  });
+  renderGenreChips();
+}
+
+function renderGenreChips() {
+  const wrap = document.getElementById('pc-genres');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  Object.keys(posterGenreState).forEach(g => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'genre-chip';
+    b.textContent = g;
+    b.dataset.state = posterGenreState[g];
+    b.setAttribute('aria-label', `${g}: ${posterGenreState[g] === 'only' ? 'only these' : posterGenreState[g]}`);
+    b.onclick = () => {
+      const next = { any: 'only', only: 'never', never: 'any' };
+      posterGenreState[g] = next[posterGenreState[g]];
+      b.dataset.state = posterGenreState[g];
+      b.setAttribute('aria-label', `${g}: ${posterGenreState[g] === 'only' ? 'only these' : posterGenreState[g]}`);
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function readPosterForm() {
+  const val = id => (document.getElementById(id)?.value ?? '').trim();
+  const num = (id, fallback) => { const n = parseFloat(val(id)); return Number.isFinite(n) ? n : fallback; };
+  const lines = id => val(id).split('\n').map(s => s.trim()).filter(Boolean)
+    .map(s => (/^\d+$/.test(s) ? Number(s) : s));
+  const sources = {};
+  POSTER_LISTS.forEach(l => { sources[l] = Math.max(0, Math.min(5, Math.round(num('pc-' + l, 0)))); });
+  return {
+    ...clonePosterDefaults(),
+    sources,
+    include: lines('pc-include'),
+    exclude: lines('pc-exclude'),
+    includeGenres: Object.keys(posterGenreState).filter(g => posterGenreState[g] === 'only'),
+    excludeGenres: Object.keys(posterGenreState).filter(g => posterGenreState[g] === 'never'),
+    minRating: Math.max(0, Math.min(10, num('pc-minRating', 0))),
+    minYear: val('pc-minYear') ? Math.round(num('pc-minYear', 0)) : null,
+    maxYear: val('pc-maxYear') ? Math.round(num('pc-maxYear', 0)) : null,
+    maxCertification: val('pc-maxCert') || null,
+    allowUnrated: !!document.getElementById('pc-allowUnrated')?.checked,
+    poolSize: Math.max(5, Math.min(100, Math.round(num('pc-poolSize', POSTER_DEFAULTS.poolSize)))),
+  };
+}
+
+function setPosterStatus(msg) {
+  const el = document.getElementById('pc-status');
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(setPosterStatus._t);
+  setPosterStatus._t = setTimeout(() => { el.textContent = ''; }, 5000);
+}
+
+// Saves the form. Called by the Save button and by Launch (quietly).
+function savePosterSettings(quiet = false) {
+  const cfg = readPosterForm();
+  const lists = Object.values(cfg.sources).reduce((a, b) => a + b, 0);
+  if (!lists && !cfg.include.length) {
+    if (!quiet) setPosterStatus('Turn on at least one list or add a title to Always Show');
+    return false;
+  }
+  POSTER_CONFIG = cfg;
+  try { localStorage.setItem(POSTER_STORE_KEY, JSON.stringify(cfg)); } catch (e) {}
+  if (!quiet) setPosterStatus('Saved — applies when you launch');
+  return true;
+}
+
+function resetPosterSettings() {
+  POSTER_CONFIG = clonePosterDefaults();
+  try { localStorage.removeItem(POSTER_STORE_KEY); } catch (e) {}
+  fillPosterForm(POSTER_CONFIG);
+  setPosterStatus('Defaults restored — applies when you launch');
+}
 
 const TMDB_GENRES = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
   99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',27:'Horror',
@@ -2545,6 +2745,7 @@ function launchDemo() {
 // ═══════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   loadConfig();
+  fillPosterForm(POSTER_CONFIG);
   document.getElementById('app').style.display = 'none';
   // Go straight to the posters. Add ?setup=1 to the URL to stay on the setup
   // screen instead; the gear button and the S key still open it any time.
