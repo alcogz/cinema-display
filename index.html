@@ -722,7 +722,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:20pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:54pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1032,12 +1032,22 @@ const BANNER_IMAGES = {
   });
 })();
 
-const BANNER_TEXT = { 'coming-soon': 'COMING SOON', 'now-playing': 'NOW PLAYING' };
+const BANNER_TEXT = {
+  'coming-soon':   'COMING SOON',
+  'now-showing':   'NOW SHOWING',
+  'now-available': 'NOW AVAILABLE',
+  'now-playing':   'NOW PLAYING',
+};
 
 function setBanner(type) {
   const text = BANNER_TEXT[type];
   if (!text) return;
-  document.getElementById('mq-text').textContent = text;
+  const el = document.getElementById('mq-text');
+  if (el.textContent !== text) {
+    el.textContent = text;
+    // Sized for 11 letters; longer phrases shrink so they stay on the board
+    el.style.fontSize = text.length > 11 ? (9.6 * 11 / text.length).toFixed(2) + 'vmin' : '';
+  }
   document.getElementById('ss-marquee').setAttribute('aria-label', text.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()));
   document.getElementById('ss-banner').classList.add('show');
 }
@@ -1498,36 +1508,154 @@ const ss = {
   failStreak: 0,           // consecutive posters that failed to load
 };
 
+// ═══════════════════════════════════════
+// POSTER SETTINGS — edit these to control which posters the screensaver shows
+// ═══════════════════════════════════════
+const POSTER_CONFIG = {
+  // TMDB lists to pull from, and how many pages (20 titles per page) of each.
+  // Set a list to 0 to turn it off.
+  sources: {
+    upcoming:    2,   // releasing soon → "COMING SOON"
+    now_playing: 1,   // in theaters now → "NOW SHOWING"
+    popular:     1,   // already out → "NOW AVAILABLE"
+    top_rated:   1,   // classics → "NOW AVAILABLE"
+  },
+
+  // Always show these. TMDB IDs (the number in a themoviedb.org/movie/ URL)
+  // or exact titles, e.g.  [155, 'Jaws', 'Back to the Future']
+  // Hand-picked titles skip the filters below.
+  include: [],
+
+  // Never show these. TMDB IDs or titles (case doesn't matter).
+  exclude: [],
+
+  // Genre names: Action, Adventure, Animation, Comedy, Crime, Documentary,
+  // Drama, Family, Fantasy, History, Horror, Music, Mystery, Romance,
+  // Sci-Fi, Thriller, War, Western
+  includeGenres: [],   // empty = any genre; otherwise a title needs at least one of these
+  excludeGenres: [],   // e.g. ['Horror']
+
+  minRating: 6.0,      // TMDB score; not applied to unreleased titles (they have no score yet)
+  minYear:   null,     // e.g. 1980, or null for no limit
+  maxYear:   null,     // e.g. 2026, or null for no limit
+
+  // Highest US age rating allowed: 'G', 'PG', 'PG-13', 'R', or null for no limit
+  maxCertification: null,
+  allowUnrated: true,  // upcoming titles often aren't rated yet
+
+  poolSize: 40,        // how many titles to rotate through
+};
+
+const TMDB_GENRES = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
+  99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',27:'Horror',
+  10402:'Music',9648:'Mystery',10749:'Romance',878:'Sci-Fi',53:'Thriller',10752:'War',37:'Western'};
+const CERT_RANK = { 'G': 1, 'PG': 2, 'PG-13': 3, 'R': 4, 'NC-17': 5 };
+
+// Local date as YYYY-MM-DD, for comparing with TMDB release dates
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Which sign a title gets: not out yet → Coming Soon; in theaters → Now Showing;
+// otherwise → Now Available
+function bannerFor(m) {
+  if (m.release_date && m.release_date > todayISO()) return 'coming-soon';
+  if (m._list === 'now_playing') return 'now-showing';
+  return 'now-available';
+}
+
 async function fetchScreensaverPool() {
   const key = state.config.tmdbKey;
   if (!key) return;
+  const cfg = POSTER_CONFIG;
+  const api = (path, params = '') =>
+    fetch(`https://api.themoviedb.org/3/${path}?api_key=${key}&language=en-US${params}`)
+      .then(r => (r.ok ? r.json() : null)).catch(() => null);
+
   try {
-    const [r1, r2, r3, r4] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${key}&page=1`),
-      fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${key}&page=2`),
-      fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${key}&page=1`),
-      fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${key}&page=1`),
-    ]);
-    const [d1,d2,d3,d4] = await Promise.all([r1.json(),r2.json(),r3.json(),r4.json()]);
-    const all = [...(d1.results||[]),...(d2.results||[]),...(d3.results||[]),...(d4.results||[])]
-      .filter(m => m.poster_path && m.vote_average >= 6.0);
-    const seen = new Set();
-    const unique = all.filter(m => { if(seen.has(m.id)) return false; seen.add(m.id); return true; });
-    shuffle(unique);
-    // Fetch trailer keys in batches of 8 so we don't spam TMDB
-    for (let i = 0; i < Math.min(unique.length, 40); i++) {
-      if (!unique[i].trailerKey) {
-        try {
-          const vr = await fetch(`https://api.themoviedb.org/3/movie/${unique[i].id}/videos?api_key=${key}`);
-          const vd = await vr.json();
-          const t = vd.results?.find(v => v.type==='Trailer' && v.site==='YouTube' && v.official)
-                 || vd.results?.find(v => v.type==='Trailer' && v.site==='YouTube');
-          unique[i].trailerKey = t?.key || null;
-        } catch(e) { unique[i].trailerKey = null; }
+    // 1. Pull the lists
+    const jobs = [];
+    for (const [list, pages] of Object.entries(cfg.sources)) {
+      for (let p = 1; p <= (pages || 0); p++) {
+        jobs.push(api(`movie/${list}`, `&page=${p}&region=US`)
+          .then(d => (d?.results || []).map(m => ({ ...m, _list: list }))));
       }
     }
-    ss.movies = unique;
-  } catch(e) { console.warn('SS pool fetch failed', e); }
+    const listed = (await Promise.all(jobs)).flat();
+
+    // 2. Hand-picked titles: IDs fetched directly, titles looked up by search
+    const picks = [];
+    for (const want of cfg.include) {
+      if (typeof want === 'number' || /^\d+$/.test(String(want))) {
+        const m = await api(`movie/${want}`);
+        if (m?.id) picks.push({ ...m, genre_ids: (m.genres || []).map(g => g.id), _pinned: true });
+      } else {
+        const d = await api('search/movie', `&query=${encodeURIComponent(want)}`);
+        const lower = String(want).toLowerCase().trim();
+        const m = d?.results?.find(r => r.title?.toLowerCase() === lower) || d?.results?.[0];
+        if (m) picks.push({ ...m, _pinned: true });
+      }
+    }
+
+    // 3. Exclusions, de-duplication and filters
+    const exIds    = new Set(cfg.exclude.filter(x => /^\d+$/.test(String(x))).map(Number));
+    const exTitles = new Set(cfg.exclude.filter(x => !/^\d+$/.test(String(x))).map(x => String(x).toLowerCase().trim()));
+    const excluded = m => exIds.has(m.id) || exTitles.has((m.title || '').toLowerCase().trim());
+    const today = todayISO();
+
+    const byId = new Map();
+    for (const m of [...picks, ...listed]) {
+      if (!m.poster_path || excluded(m)) continue;
+      const prev = byId.get(m.id);
+      if (!prev) byId.set(m.id, m);
+      else if (m._list === 'now_playing' && !prev._pinned) prev._list = 'now_playing';  // in-theaters wins
+    }
+
+    const passes = m => {
+      if (m._pinned) return true;
+      const names = (m.genre_ids || []).map(id => TMDB_GENRES[id]).filter(Boolean);
+      if (cfg.includeGenres.length && !names.some(n => cfg.includeGenres.includes(n))) return false;
+      if (names.some(n => cfg.excludeGenres.includes(n))) return false;
+      const released = m.release_date && m.release_date <= today;
+      if (released && cfg.minRating && (m.vote_average || 0) < cfg.minRating) return false;
+      const year = parseInt((m.release_date || '').slice(0, 4), 10);
+      if (cfg.minYear && year && year < cfg.minYear) return false;
+      if (cfg.maxYear && year && year > cfg.maxYear) return false;
+      return true;
+    };
+
+    const pinned = [...byId.values()].filter(m => m._pinned);
+    const rest   = [...byId.values()].filter(m => !m._pinned && passes(m));
+    shuffle(rest);
+
+    // 4. Details (trailer + US age rating) in one call per title, until the pool is full
+    const accepted = [];
+    let calls = 0;
+    for (const m of [...pinned, ...rest]) {
+      if (accepted.length >= cfg.poolSize || calls >= cfg.poolSize * 2) break;
+      calls++;
+      const d = await api(`movie/${m.id}`, '&append_to_response=videos,release_dates');
+      if (!d) continue;
+      const us = d.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+      const cert = us?.release_dates?.find(x => x.certification)?.certification || '';
+      if (cfg.maxCertification && !m._pinned) {
+        if (!cert ? !cfg.allowUnrated : (CERT_RANK[cert] || 99) > (CERT_RANK[cfg.maxCertification] || 0)) continue;
+      }
+      const vids = d.videos?.results || [];
+      const t = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official)
+             || vids.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+      const movie = { ...m, certification: cert, trailerKey: t?.key || null };
+      movie.banner = bannerFor(movie);
+      accepted.push(movie);
+    }
+    shuffle(accepted);
+    if (accepted.length) {
+      ss.movies = accepted;
+      const counts = accepted.reduce((c, m) => (c[m.banner] = (c[m.banner] || 0) + 1, c), {});
+      console.log('[SS] Pool: ' + accepted.length + ' titles ' + JSON.stringify(counts));
+    }
+  } catch (e) { console.warn('SS pool fetch failed', e); }
 }
 
 function shuffle(arr) {
@@ -1557,7 +1685,7 @@ async function startScreensaver() {
   }
 
   ss.currentIdx = Math.floor(Math.random() * ss.movies.length);
-  setBanner('coming-soon');
+  setBanner(ss.movies[ss.currentIdx]?.banner || 'coming-soon');
   await runSSSlide(ss.currentIdx);
   if (gen !== ss.gen) return;
   clearInterval(ss.fetchTimer);
@@ -2004,6 +2132,7 @@ async function showSSPoster(movie) {
     frontLayer.style.opacity = '0';
     backLayer.style.opacity  = '1';
     ss.front = isAFront ? 'b' : 'a';
+    setBanner(movie.banner || bannerFor(movie));
     // Once the 1.4s crossfade is done, drop the now-hidden layer's image so the
     // TV only holds one full-size poster texture at a time
     const gen = ss.gen;
