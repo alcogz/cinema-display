@@ -694,7 +694,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:10pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:35pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -981,7 +981,12 @@ function setBanner(type) {
 // ═══════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════
-function launch() {
+// auto = true when launching by itself on page load (not from the button).
+// If the TMDB check fails then (e.g. network not up yet right after the TV
+// boots), it keeps retrying instead of sitting on the setup screen.
+let autoLaunchTimer = null;
+function launch(auto = false) {
+  clearTimeout(autoLaunchTimer);
   const cfg = {
     ksIP:      document.getElementById('ks-ip').value.trim(),
     ksPort:    document.getElementById('ks-port').value.trim() || '10000',
@@ -1011,6 +1016,11 @@ function launch() {
     btn.style.opacity = '1';
 
     if (!ok) {
+      if (auto) {
+        setLaunchError('Can\'t reach TMDB yet — retrying in 15 seconds…');
+        autoLaunchTimer = setTimeout(() => launch(true), 15000);
+        return;
+      }
       setLaunchError('TMDB key not accepted — double-check and try again');
       return;
     }
@@ -1047,6 +1057,7 @@ function clearLaunchError() {
 }
 
 function showSetup() {
+  clearTimeout(autoLaunchTimer);   // don't auto-launch out from under the setup screen
   const cfg = state.config;
   document.getElementById('ks-ip').value = cfg.ksIP || '';
   document.getElementById('ks-port').value = cfg.ksPort || '10000';
@@ -1679,7 +1690,7 @@ function ssStartTrailer(key, title) {
 
 // How long the black cover stays up after playback starts (first start) or
 // resumes (after a stall), so YouTube's overlays have time to fade away
-const COVER_START_MS  = 4500;   // title bar lingers ~4-5s after playback starts; raise if it peeks through
+const COVER_START_MS  = 2000;   // YouTube title bar may still show briefly after this; raise to hide it fully
 const COVER_RESUME_MS = 700;
 let ssCoverTimer = null;
 
@@ -2333,6 +2344,11 @@ function launchDemo() {
 window.addEventListener('DOMContentLoaded', () => {
   loadConfig();
   document.getElementById('app').style.display = 'none';
+  // Go straight to the posters. Add ?setup=1 to the URL to stay on the setup
+  // screen instead; the gear button and the S key still open it any time.
+  if (new URLSearchParams(location.search).get('setup') !== '1') {
+    autoLaunchTimer = setTimeout(() => launch(true), 300);
+  }
 });
 </script>
 </body>
