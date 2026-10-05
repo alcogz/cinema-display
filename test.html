@@ -12,6 +12,7 @@
   button:focus { outline: 3px solid #c9a84c; }
   #stage { flex: 1; position: relative; overflow: hidden; }
   #holder { position: absolute; top: 50%; left: 50%; width: 960px; height: 540px; transform: translate(-50%, -50%); }
+  #holder.small { width: 426px; height: 240px; }
   #holder.rotated { transform: translate(-50%, -50%) rotate(90deg); }
   #holder iframe { width: 100%; height: 100%; border: 0; }
   #out { padding: 10px 14px; background: #111; white-space: pre-wrap; max-height: 40vh; overflow: auto; font-size: 14px; }
@@ -20,6 +21,7 @@
 <body>
 <div id="wrap">
   <div id="bar">
+    <button id="b-small">▶ Play small</button>
     <button id="b-flat">▶ Play flat</button>
     <button id="b-rot">▶ Play rotated</button>
     <button id="b-stop">■ Stop</button>
@@ -58,11 +60,12 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-function play(rotated) {
+function play(rotated, small) {
   stop();
   document.getElementById('holder').classList.toggle('rotated', rotated);
+  document.getElementById('holder').classList.toggle('small', !!small);
   stalls = 0; playing = false; started = Date.now();
-  log(`--- Playing ${rotated ? 'ROTATED' : 'FLAT'} ---`);
+  log(`--- Playing ${small ? 'SMALL ' : ''}${rotated ? 'ROTATED' : 'FLAT'} ---`);
   document.getElementById('holder').innerHTML = '<div id="yt"></div>';
   player = new YT.Player('yt', {
     videoId: VIDEO,
@@ -87,6 +90,7 @@ function play(rotated) {
 function stop() {
   if (player) { try { player.destroy(); } catch (e) {} player = null; }
 }
+document.getElementById('b-small').onclick = () => play(false, true);
 document.getElementById('b-flat').onclick = () => play(false);
 document.getElementById('b-rot').onclick  = () => play(true);
 document.getElementById('b-stop').onclick = stop;
