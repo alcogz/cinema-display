@@ -672,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:00pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:00pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1605,14 +1605,21 @@ function ssStartTrailer(key, title) {
         fs: 0,
         iv_load_policy: 3,
         disablekb: 1,
+        cc_load_policy: 0,
       },
       events: {
+        // With controls off, YouTube falls back to the device's caption default
+        // and there is no CC button to turn them off. Unload the captions module
+        // when the player is ready, and again if YouTube loads it later.
+        onReady:     e => ssHideCaptions(e.target),
+        onApiChange: e => ssHideCaptions(e.target),
         onStateChange: e => {
           if (e.data === YT.PlayerState.PLAYING) {
             // Fade in only once playback actually starts — hides loading frame
             const frame = document.getElementById('ss-trailer-frame');
             if (frame) frame.style.opacity = '1';
             if (!ss._loggedQuality) {
+              ssHideCaptions(e.target);
               ss._loggedQuality = true;
               let q = '?';
               try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
@@ -1645,6 +1652,11 @@ function ssStartTrailer(key, title) {
       if (ytApiReady) { clearInterval(poll); if (ss.trailerPlaying) createYTPlayer(); }
     }, 100);
   }
+}
+
+function ssHideCaptions(p) {
+  try { p.unloadModule('captions'); } catch(e) {}
+  try { p.unloadModule('cc'); } catch(e) {}
 }
 
 function ssOnTrailerEnd() {
