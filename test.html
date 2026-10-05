@@ -98,7 +98,8 @@ function stop() {
 
 // ── 3. Same TV, no YouTube player: a plain H.264 720p MP4 in a <video> tag ──
 // Logs stalls ("waiting") and dropped frames, which YouTube's iframe can't report.
-const MP4 = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+// Self-hosted 60s 720p H.264 test file, uploaded to the repo next to this page
+const MP4 = 'test-720p.mp4';
 let mp4Timer = null;
 function playMp4() {
   stop();
