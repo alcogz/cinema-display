@@ -608,17 +608,14 @@
     width: 100%;
     height: 100%;
   }
-  /* iframe is 4:3 inside the 16:9 frame — the extra height above and below
-     crops YouTube's title bar and controls, without inflating the player size
-     YouTube uses to pick stream quality (was 56.25vw ≈ 1080px tall, which made
-     it fetch 1080p+ for a ~360px-tall card) */
+  /* iframe fills the 16:9 card exactly. YouTube's control bar is turned off
+     with controls:0 rather than cropped off — cropping needed an oversized
+     iframe, which made YouTube fetch higher-resolution streams than the card shows */
   #ss-trailer-frame iframe {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    inset: 0;
     width: 100% !important;
-    height: 150% !important;
-    transform: translate(-50%, -50%);
+    height: 100% !important;
     border: none;
     display: block;
   }
@@ -675,7 +672,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:00pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:00pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1373,6 +1370,16 @@ const SS_POSTER_SIZE = 'original';
 // Diagnostic switch: add ?trailers=0 to the URL for posters only (15s each)
 const SS_TRAILERS = new URLSearchParams(location.search).get('trailers') !== '0';
 
+// Diagnostic switch: add ?norotate=1 to turn off the 90° CSS rotation. The
+// layout will be sideways — this only exists to test whether compositing video
+// inside a rotated layer is what makes trailers stall on the TV.
+const NO_ROTATE = new URLSearchParams(location.search).get('norotate') === '1';
+if (NO_ROTATE) {
+  const st = document.createElement('style');
+  st.textContent = '#app{width:100vw!important;height:100vh!important;transform:translate(-50%,-50%)!important;}';
+  document.head.appendChild(st);
+}
+
 const ss = {
   movies: [],
   currentIdx: 0,
@@ -1546,6 +1553,8 @@ const PRELOAD_DELAY_MS = 30000;
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
   ss.trailerPlaying = true;
+  ss._loggedQuality = false;
+  ss._bufferCount = 0;
 
   const wrap    = document.getElementById('ss-trailer-wrap');
   const titleEl = document.getElementById('ss-trailer-title');
@@ -1589,7 +1598,7 @@ function ssStartTrailer(key, title) {
       videoId: key,
       playerVars: {
         autoplay: 1,
-        controls: 1,
+        controls: 0,
         rel: 0,
         modestbranding: 1,
         playsinline: 1,
@@ -1603,13 +1612,23 @@ function ssStartTrailer(key, title) {
             // Fade in only once playback actually starts — hides loading frame
             const frame = document.getElementById('ss-trailer-frame');
             if (frame) frame.style.opacity = '1';
+            if (!ss._loggedQuality) {
+              ss._loggedQuality = true;
+              let q = '?';
+              try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
+              console.log('[SS] Playing — quality: ' + q + (NO_ROTATE ? ' (norotate)' : ''));
+            }
           }
-          if (e.data === YT.PlayerState.BUFFERING) {
-            // Shows in the ?debug=1 HUD — tells us whether stalls persist and
-            // what quality YouTube picked (expect 'large'/'hd720', not 'hd1080'+)
-            let q = '?';
-            try { q = ytPlayer?.getPlaybackQuality?.() || '?'; } catch(err) {}
-            console.log('[SS] Buffering — quality: ' + q);
+          if (e.data === YT.PlayerState.BUFFERING && ss._loggedQuality) {
+            // Mid-trailer stalls only (the initial load also reports BUFFERING).
+            // Shows in the ?debug=1 HUD.
+            ss._bufferCount++;
+            let q = '?', loaded = '?';
+            try {
+              q = ytPlayer?.getPlaybackQuality?.() || '?';
+              loaded = Math.round((ytPlayer?.getVideoLoadedFraction?.() || 0) * 100) + '%';
+            } catch(err) {}
+            console.log('[SS] Stall #' + ss._bufferCount + ' — quality: ' + q + ', loaded: ' + loaded);
           }
           if (e.data === YT.PlayerState.ENDED) { console.log('[SS] Trailer ended normally'); ssOnTrailerEnd(); }
         },
