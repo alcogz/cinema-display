@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <title>Cinema Display</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Rajdhani:wght@300;400;500;600&family=Limelight&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -465,18 +465,46 @@
     flex-shrink: 0;
     width: 100%;
     display: flex; justify-content: center; align-items: center;
-    padding: clamp(8px, 2vmax, 20px) clamp(20px, 8vmax, 120px) clamp(4px, 1vmax, 10px);
+    padding: 2.4vmin 2vmin 1.2vmin;
     opacity: 0; transform: translateY(-10px);
     transition: opacity 0.9s ease 0.2s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s;
   }
   #ss-banner.show { opacity: 1; transform: none; }
-  #ss-banner img {
-    width: 100%;
-    max-width: clamp(260px, 80vmax, 780px);
-    height: auto;
-    display: block;
-    filter: drop-shadow(0 6px 24px rgba(0,0,0,0.8));
+  /* Marquee sign — built in HTML/CSS (was a PNG) so it stays sharp at full TV
+     resolution. vmin = the screen's short side, so it sizes the same whether
+     the TV is rotated in hardware or the app falls back to CSS rotation. */
+  .mq {
+    width: 100%; height: 24vmin;
+    box-sizing: border-box; padding: 1.7vmin;
+    background: #160b08;
+    border: max(2px, 0.28vmin) solid #5a3a1c; border-radius: 1vmin;
+    display: flex; flex-direction: column; justify-content: space-between;
+    box-shadow: 0 1vmin 3vmin rgba(0,0,0,0.8);
   }
+  .mq-row { display: flex; justify-content: space-between; }
+  .mq-mid { flex: 1; display: flex; align-items: center; justify-content: space-between; min-height: 0; }
+  .mq-col { height: 100%; display: flex; flex-direction: column; justify-content: space-around; }
+  .mq-board {
+    flex: 1; margin: 0 2.4vmin; height: 13.7vmin;
+    box-sizing: border-box; border: max(1px, 0.19vmin) solid #8a6e30; border-radius: 0.4vmin;
+    background: #0c0605;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mq-text {
+    font-family: 'Limelight', 'Cormorant Garamond', Georgia, serif;
+    font-size: 9.6vmin; line-height: 1; letter-spacing: 0.06em; white-space: nowrap;
+    color: #fff4dc;
+    text-shadow: 0 0 0.9vmin rgba(255,214,140,0.55), 0 0 2.8vmin rgba(255,170,60,0.3);
+  }
+  .mq-bulb {
+    width: 1.3vmin; height: 1.3vmin; border-radius: 50%; flex-shrink: 0;
+    background: #ffd98a;
+    box-shadow: 0 0 0.55vmin 0.2vmin rgba(255,190,90,0.7), 0 0 1.3vmin 0.4vmin rgba(255,170,60,0.25);
+  }
+  @keyframes mq-chase { 0%,100% { opacity: 1; } 50% { opacity: 0.22; } }
+  .mq.chasing .mq-bulb { animation: mq-chase 1.5s steps(1,end) infinite; }
+  .mq.chasing .b2 { animation-delay: 0.5s; }
+  .mq.chasing .b3 { animation-delay: 1s; }
 
   /* ─── POSTER CONTAINER ─── */
   #ss-poster-wrap {
@@ -694,7 +722,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 12:35pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:14pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -809,7 +837,15 @@
   <!-- Screensaver — fullscreen poster display -->
   <div id="screensaver">
     <div id="ss-banner">
-      <img id="ss-banner-img" src="" alt="">
+      <div class="mq chasing" id="ss-marquee" role="img" aria-label="Coming Soon">
+        <div class="mq-row" id="mq-top"></div>
+        <div class="mq-mid">
+          <div class="mq-col" id="mq-left"></div>
+          <div class="mq-board"><span class="mq-text" id="mq-text">COMING SOON</span></div>
+          <div class="mq-col" id="mq-right"></div>
+        </div>
+        <div class="mq-row" id="mq-bottom"></div>
+      </div>
     </div>
     <div id="ss-poster-wrap">
       <div class="ss-layer" id="ss-layer-a"></div>
@@ -967,14 +1003,35 @@ const BANNER_IMAGES = {
   'now-playing': 'https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png',
 };
 
+// Marquee bulbs: every third bulb shares a timing group (b1/b2/b3), so the
+// lights appear to chase around the frame
+(function buildMarquee() {
+  const fill = (id, n, offset, reverse) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const bulbs = Array.from({ length: n }, (_, i) =>
+      `<span class="mq-bulb b${((i + offset) % 3) + 1}"></span>`);
+    el.innerHTML = (reverse ? bulbs.reverse() : bulbs).join('');
+  };
+  fill('mq-top', 34, 0, false);
+  fill('mq-right', 5, 1, false);
+  fill('mq-bottom', 34, 1, true);
+  fill('mq-left', 5, 2, true);
+})();
+
+const BANNER_TEXT = { 'coming-soon': 'COMING SOON', 'now-playing': 'NOW PLAYING' };
+
 function setBanner(type) {
-  const bannerEl = document.getElementById('ss-banner');
-  const imgEl    = document.getElementById('ss-banner-img');
-  const src      = BANNER_IMAGES[type];
-  if (!src) return;
-  imgEl.src = src;
-  imgEl.alt = type === 'now-playing' ? 'Now Playing' : 'Coming Soon';
-  bannerEl.classList.add('show');
+  const text = BANNER_TEXT[type];
+  if (!text) return;
+  document.getElementById('mq-text').textContent = text;
+  document.getElementById('ss-marquee').setAttribute('aria-label', text.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()));
+  document.getElementById('ss-banner').classList.add('show');
+}
+
+// Pause the bulb chase while a trailer plays — keeps the TV's GPU on the video
+function setMarqueeChase(on) {
+  document.getElementById('ss-marquee')?.classList.toggle('chasing', on);
 }
 
 
@@ -1579,6 +1636,7 @@ const PRELOAD_DELAY_MS = 30000;
 
 function ssStartTrailer(key, title) {
   if (!ss.active) return;
+  setMarqueeChase(false);
   ss.trailerPlaying = true;
   ss._loggedQuality = false;
   ss._bufferCount = 0;
@@ -1715,6 +1773,7 @@ function ssHideCaptions(p) {
 
 function ssOnTrailerEnd() {
   if (!ss.active || !ss.trailerPlaying) return;
+  setMarqueeChase(true);
   clearTimeout(ss._trailerTimeout);
   ss._trailerTimeout = null;
   ss.trailerPlaying = false;
@@ -1766,6 +1825,7 @@ function ssOnTrailerEnd() {
 }
 
 function ssStopTrailer() {
+  setMarqueeChase(true);
   ssClearTimers();
   ss.trailerPlaying = false;
 
