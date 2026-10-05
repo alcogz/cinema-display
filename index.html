@@ -758,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:54pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 3:11pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -2794,7 +2794,9 @@ function openTrailer() {
   if (!state.trailerKey) return;
   const modal = document.getElementById('trailer-modal');
   const iframe = document.getElementById('trailer-iframe');
-  iframe.src = `https://www.youtube-nocookie.com/embed/${state.trailerKey}?autoplay=1&modestbranding=1&rel=0`;
+  // youtube.com (not youtube-nocookie) so a signed-in YouTube Premium account
+  // is recognized and plays without ads
+  iframe.src = `https://www.youtube.com/embed/${state.trailerKey}?autoplay=1&modestbranding=1&rel=0`;
   modal.classList.add('open');
 }
 
