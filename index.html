@@ -758,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:24pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:43pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1610,6 +1610,127 @@ const ss = {
 // ═══════════════════════════════════════
 // POSTER SETTINGS — edit these to control which posters the screensaver shows
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// YOUR TITLE LISTS — edit here instead of on the TV remote
+// ═══════════════════════════════════════
+// TMDB IDs (the number in a themoviedb.org/movie/ URL, e.g.
+// themoviedb.org/movie/155-the-dark-knight → 155), IMDb IDs in quotes
+// ('tt0468569', from an imdb.com/title/ URL), or exact titles in quotes.
+// These always apply, on top of anything entered on the TV's setup screen.
+// IMDb "Top 100 Posters" list (imdb.com/list/ls082915895), added Oct 5, 2026
+const ALWAYS_SHOW = [
+  'tt0111161',  // The Shawshank Redemption (1994)
+  'tt0068646',  // The Godfather (1972)
+  'tt0071562',  // The Godfather Part II (1974)
+  'tt0468569',  // The Dark Knight (2008)
+  'tt0050083',  // 12 Angry Men (1957)
+  'tt0108052',  // Schindler's List (1993)
+  'tt0167260',  // The Lord of the Rings: The Return of the King (2003)
+  'tt0110912',  // Pulp Fiction (1994)
+  'tt0060196',  // The Good, the Bad and the Ugly (1966)
+  'tt0137523',  // Fight Club (1999)
+  'tt0120737',  // The Lord of the Rings: The Fellowship of the Ring (2001)
+  'tt0109830',  // Forrest Gump (1994)
+  'tt1375666',  // Inception (2010)
+  'tt0080684',  // Star Wars: Episode V - The Empire Strikes Back (1980)
+  'tt0167261',  // The Lord of the Rings: The Two Towers (2002)
+  'tt0073486',  // One Flew Over the Cuckoo's Nest (1975)
+  'tt0099685',  // GoodFellas (1990)
+  'tt0133093',  // The Matrix (1999)
+  'tt0076759',  // Star Wars: Episode IV - A New Hope (1977)
+  'tt0047478',  // Seven Samurai (1954)
+  'tt0114369',  // Seven (1995)
+  'tt0317248',  // City of God (2002)
+  'tt0038650',  // It's a Wonderful Life (1946)
+  'tt0102926',  // The Silence of the Lambs (1991)
+  'tt0114814',  // The Usual Suspects (1995)
+  'tt0120815',  // Saving Private Ryan (1998)
+  'tt0090605',  // Aliens (1986)
+  'tt0816692',  // Interstellar (2014)
+  'tt0440963',  // The Bourne Ultimatum (2007)
+  'tt0120689',  // The Green Mile (1999)
+  'tt0120586',  // American History X (1998)
+  'tt0054215',  // Psycho (1960)
+  'tt0116282',  // Fargo (1996)
+  'tt0034583',  // Casablanca (1942)
+  'tt0253474',  // The Pianist (2002)
+  'tt0407887',  // The Departed (2006)
+  'tt0088763',  // Back to the Future (1985)
+  'tt0103064',  // Terminator 2: Judgment Day (1991)
+  'tt2582802',  // Whiplash (2014)
+  'tt0047396',  // Rear Window (1954)
+  'tt0110357',  // The Lion King (1994)
+  'tt0172495',  // Gladiator (2000)
+  'tt0082971',  // Raiders of the Lost Ark (1981)
+  'tt0482571',  // The Prestige (2006)
+  'tt0091763',  // Platoon (1986)
+  'tt0078788',  // Apocalypse Now (1979)
+  'tt0209144',  // Memento (2000)
+  'tt0078748',  // Alien (1979)
+  'tt0043014',  // Sunset Boulevard (1950)
+  'tt0057012',  // Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb (1964)
+  'tt1853728',  // Django Unchained (2012)
+  'tt1024648',  // Argo (2012)
+  'tt0910970',  // WALL·E (2008)
+  'tt1345836',  // The Dark Knight Rises (2012)
+  'tt0116209',  // The English Patient (1996)
+  'tt0169547',  // American Beauty (1999)
+  'tt0033467',  // Citizen Kane (1941)
+  'tt0112573',  // Braveheart (1995)
+  'tt0052357',  // Vertigo (1958)
+  'tt0086190',  // Star Wars: Episode VI - Return of the Jedi (1983)
+  'tt0105236',  // Reservoir Dogs (1992)
+  'tt0086879',  // Amadeus (1984)
+  'tt5013056',  // Dunkirk (2017)
+  'tt0045152',  // Singin' in the Rain (1952)
+  'tt0338013',  // Eternal Sunshine of the Spotless Mind (2004)
+  'tt0066921',  // A Clockwork Orange (1971)
+  'tt0062622',  // 2001: A Space Odyssey (1968)
+  'tt0114709',  // Toy Story (1995)
+  'tt0056592',  // To Kill a Mockingbird (1962)
+  'tt0075314',  // Taxi Driver (1976)
+  'tt0361748',  // Inglourious Basterds (2009)
+  'tt2024544',  // 12 Years a Slave (2013)
+  'tt0119217',  // Good Will Hunting (1997)
+  'tt0208092',  // Snatch (2000)
+  'tt0434409',  // V for Vendetta (2005)
+  'tt0119488',  // L.A. Confidential (1997)
+  'tt1049413',  // Up (2009)
+  'tt0338751',  // The Aviator (2004)
+  'tt0499549',  // Avatar (2009)
+  'tt0120338',  // Titanic (1997)
+  'tt0073195',  // Jaws (1975)
+  'tt0107290',  // Jurassic Park (1993)
+  'tt0095016',  // Die Hard (1988)
+  'tt0075148',  // Rocky (1976)
+  'tt0083866',  // E.T. the Extra-Terrestrial (1982)
+  'tt0477348',  // No Country for Old Men (2007)
+  'tt0266697',  // Kill Bill: Vol. 1 (2003)
+  'tt0378194',  // Kill Bill: Vol. 2 (2004)
+  'tt0095953',  // Rain Man (1988)
+  'tt2562232',  // Birdman or (The Unexpected Virtue of Ignorance) (2014)
+  'tt1392190',  // Mad Max: Fury Road (2015)
+  'tt0081398',  // Raging Bull (1980)
+  'tt1504320',  // The King's Speech (2010)
+  'tt0469494',  // There Will Be Blood (2007)
+  'tt0031381',  // Gone with the Wind (1939)
+  'tt0790636',  // Dallas Buyers Club (2013)
+  'tt0071315',  // Chinatown (1974)
+  'tt0052618',  // Ben-Hur (1959)
+  'tt0083987',  // Gandhi (1982)
+  'tt0067116',  // The French Connection (1971)
+  'tt1454468',  // Gravity (2013)
+];
+
+// Share of the rotation given to ALWAYS_SHOW titles (0.5 = half). The rest
+// comes from the TMDB lists (upcoming, now playing, etc.). If those lists are
+// all turned off, hand-picked titles fill the whole rotation.
+const ALWAYS_SHOW_SHARE = 0.5;
+
+const NEVER_SHOW = [
+  // 238,            // The Godfather
+];
+
 // Defaults — the setup screen's "Screensaver Posters" section overrides these
 // on each device (saved in that browser), and "Reset to Defaults" returns here.
 const POSTER_DEFAULTS = {
@@ -1739,12 +1860,21 @@ function setPosterStatus(msg) {
 function savePosterSettings(quiet = false) {
   const cfg = readPosterForm();
   const lists = Object.values(cfg.sources).reduce((a, b) => a + b, 0);
-  if (!lists && !cfg.include.length) {
+  if (!lists && !cfg.include.length && !ALWAYS_SHOW.length) {
     if (!quiet) setPosterStatus('Turn on at least one list or add a title to Always Show');
     return false;
   }
   POSTER_CONFIG = cfg;
-  try { localStorage.setItem(POSTER_STORE_KEY, JSON.stringify(cfg)); } catch (e) {}
+  // Store only the settings that differ from POSTER_DEFAULTS, so changing a
+  // default in the code still reaches a TV that has saved its own settings
+  const diff = {};
+  for (const k of Object.keys(cfg)) {
+    if (JSON.stringify(cfg[k]) !== JSON.stringify(POSTER_DEFAULTS[k])) diff[k] = cfg[k];
+  }
+  try {
+    if (Object.keys(diff).length) localStorage.setItem(POSTER_STORE_KEY, JSON.stringify(diff));
+    else localStorage.removeItem(POSTER_STORE_KEY);
+  } catch (e) {}
   if (!quiet) setPosterStatus('Saved — applies when you launch');
   return true;
 }
@@ -1796,21 +1926,34 @@ async function fetchScreensaverPool() {
 
     // 2. Hand-picked titles: IDs fetched directly, titles looked up by search
     const picks = [];
-    for (const want of cfg.include) {
-      if (typeof want === 'number' || /^\d+$/.test(String(want))) {
-        const m = await api(`movie/${want}`);
-        if (m?.id) picks.push({ ...m, genre_ids: (m.genres || []).map(g => g.id), _pinned: true });
-      } else {
-        const d = await api('search/movie', `&query=${encodeURIComponent(want)}`);
-        const lower = String(want).toLowerCase().trim();
-        const m = d?.results?.find(r => r.title?.toLowerCase() === lower) || d?.results?.[0];
-        if (m) picks.push({ ...m, _pinned: true });
+    const includeAll = [...new Set([...ALWAYS_SHOW, ...cfg.include])];
+    const excludeAll = [...new Set([...NEVER_SHOW, ...cfg.exclude])];
+    // An entry can be a TMDB ID (155), an IMDb ID ('tt0468569') or a title ('Jaws')
+    const resolve = async (want) => {
+      const s = String(want).trim();
+      if (/^tt\d+$/i.test(s)) {
+        const d = await api(`find/${s}`, '&external_source=imdb_id');
+        return d?.movie_results?.[0] || null;
       }
+      if (/^\d+$/.test(s)) {
+        const m = await api(`movie/${s}`);
+        return m?.id ? { ...m, genre_ids: (m.genres || []).map(g => g.id) } : null;
+      }
+      const d = await api('search/movie', `&query=${encodeURIComponent(s)}`);
+      const lower = s.toLowerCase();
+      return d?.results?.find(r => r.title?.toLowerCase() === lower) || d?.results?.[0] || null;
+    };
+    for (let i = 0; i < includeAll.length; i += 10) {   // 10 lookups at a time
+      const batch = await Promise.all(includeAll.slice(i, i + 10).map(resolve));
+      batch.forEach(m => { if (m) picks.push({ ...m, _pinned: true }); });
     }
+    // IMDb IDs in the never-show list are turned into TMDB IDs
+    const exImdb = excludeAll.filter(x => /^tt\d+$/i.test(String(x).trim()));
+    const exResolved = (await Promise.all(exImdb.map(resolve))).filter(Boolean).map(m => m.id);
 
     // 3. Exclusions, de-duplication and filters
-    const exIds    = new Set(cfg.exclude.filter(x => /^\d+$/.test(String(x))).map(Number));
-    const exTitles = new Set(cfg.exclude.filter(x => !/^\d+$/.test(String(x))).map(x => String(x).toLowerCase().trim()));
+    const exIds    = new Set([...excludeAll.filter(x => /^\d+$/.test(String(x))).map(Number), ...exResolved]);
+    const exTitles = new Set(excludeAll.filter(x => !/^\d+$/.test(String(x)) && !/^tt\d+$/i.test(String(x).trim())).map(x => String(x).toLowerCase().trim()));
     const excluded = m => exIds.has(m.id) || exTitles.has((m.title || '').toLowerCase().trim());
     const today = todayISO();
 
@@ -1836,13 +1979,17 @@ async function fetchScreensaverPool() {
     };
 
     const pinned = [...byId.values()].filter(m => m._pinned);
+    shuffle(pinned);   // with a long list, each refresh picks a different set
     const rest   = [...byId.values()].filter(m => !m._pinned && passes(m));
     shuffle(rest);
 
     // 4. Details (trailer + US age rating) in one call per title, until the pool is full
     const accepted = [];
     let calls = 0;
-    for (const m of [...pinned, ...rest]) {
+    // Hand-picked titles take ALWAYS_SHOW_SHARE of the pool; leftovers only
+    // fill in if the TMDB lists come up short
+    const pinCount = rest.length ? Math.min(pinned.length, Math.round(cfg.poolSize * ALWAYS_SHOW_SHARE)) : pinned.length;
+    for (const m of [...pinned.slice(0, pinCount), ...rest, ...pinned.slice(pinCount)]) {
       if (accepted.length >= cfg.poolSize || calls >= cfg.poolSize * 2) break;
       calls++;
       const d = await api(`movie/${m.id}`, '&append_to_response=videos,release_dates');
