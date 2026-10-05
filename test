@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinema Display — Playback Test</title>
+<style>
+  body { margin: 0; background: #000; color: #ddd; font: 16px/1.4 monospace; }
+  #wrap { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  #bar { padding: 10px 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #111; }
+  button { font: inherit; padding: 10px 16px; background: #222; color: #fff; border: 1px solid #555; }
+  button:focus { outline: 3px solid #c9a84c; }
+  #stage { flex: 1; position: relative; overflow: hidden; }
+  #holder { position: absolute; top: 50%; left: 50%; width: 960px; height: 540px; transform: translate(-50%, -50%); }
+  #holder.rotated { transform: translate(-50%, -50%) rotate(90deg); }
+  #holder iframe { width: 100%; height: 100%; border: 0; }
+  #out { padding: 10px 14px; background: #111; white-space: pre-wrap; max-height: 40vh; overflow: auto; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="bar">
+    <button id="b-flat">▶ Play flat</button>
+    <button id="b-rot">▶ Play rotated</button>
+    <button id="b-stop">■ Stop</button>
+  </div>
+  <div id="stage"><div id="holder"><div id="yt"></div></div></div>
+  <div id="out"></div>
+</div>
+<script>
+const VIDEO = 'EXeTwQWrcwY';   // The Dark Knight trailer
+const out = document.getElementById('out');
+const log = m => { out.textContent += m + '\n'; out.scrollTop = out.scrollHeight; };
+
+// ── 1. What can this browser decode, and is it hardware-accelerated? ──
+// "powerEfficient: false" usually means software decoding on the TV's CPU.
+(async () => {
+  log('Screen ' + screen.width + 'x' + screen.height + ' @ ' + devicePixelRatio + 'x  |  ' + navigator.userAgent);
+  const codecs = [
+    ['AV1 ', 'video/mp4; codecs="av01.0.08M.08"'],
+    ['VP9 ', 'video/webm; codecs="vp09.00.40.08"'],
+    ['H264', 'video/mp4; codecs="avc1.640028"'],
+  ];
+  for (const [name, type] of codecs) {
+    try {
+      const r = await navigator.mediaCapabilities.decodingInfo({
+        type: 'media-source',
+        video: { contentType: type, width: 1920, height: 1080, bitrate: 5e6, framerate: 30 },
+      });
+      log(`${name} 1080p  supported:${r.supported}  smooth:${r.smooth}  powerEfficient:${r.powerEfficient}`);
+    } catch (e) { log(name + ' check failed: ' + e.message); }
+  }
+})();
+
+// ── 2. Play the same trailer flat and rotated, and count stalls ──
+let player = null, stalls = 0, started = 0, playing = false;
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+
+function play(rotated) {
+  stop();
+  document.getElementById('holder').classList.toggle('rotated', rotated);
+  stalls = 0; playing = false; started = Date.now();
+  log(`--- Playing ${rotated ? 'ROTATED' : 'FLAT'} ---`);
+  document.getElementById('holder').innerHTML = '<div id="yt"></div>';
+  player = new YT.Player('yt', {
+    videoId: VIDEO,
+    playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, mute: 0 },
+    events: {
+      onStateChange: e => {
+        const t = ((Date.now() - started) / 1000).toFixed(1) + 's';
+        if (e.data === YT.PlayerState.PLAYING && !playing) {
+          playing = true;
+          log(`${t} playing — quality ${player.getPlaybackQuality()}`);
+        }
+        if (e.data === YT.PlayerState.BUFFERING && playing) {
+          stalls++;
+          log(`${t} STALL #${stalls} — quality ${player.getPlaybackQuality()}, loaded ${Math.round(player.getVideoLoadedFraction() * 100)}%`);
+        }
+        if (e.data === YT.PlayerState.ENDED) log(`${t} ended — ${stalls} stalls total`);
+      },
+      onError: e => log('YouTube error ' + e.data),
+    },
+  });
+}
+function stop() {
+  if (player) { try { player.destroy(); } catch (e) {} player = null; }
+}
+document.getElementById('b-flat').onclick = () => play(false);
+document.getElementById('b-rot').onclick  = () => play(true);
+document.getElementById('b-stop').onclick = stop;
+</script>
+</body>
+</html>
