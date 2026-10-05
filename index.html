@@ -146,6 +146,13 @@
   .poster-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
   .poster-actions .btn-demo { margin: 0; width: auto; padding: 12px 20px; }
   #pc-status { font-size: 12px; letter-spacing: 0.12em; color: var(--green); }
+  /* Remote (D-pad) navigation: make the focused control obvious */
+  #setup button:focus, #setup select:focus, #setup input[type="checkbox"]:focus {
+    outline: 3px solid #c9a84c; outline-offset: 3px;
+  }
+  #setup input:not([type="checkbox"]):focus, #setup textarea:focus, #setup select:focus {
+    border-color: #c9a84c; box-shadow: 0 0 0 2px #c9a84c;
+  }
   .field input::placeholder { color: #4a3f2a; }
 
   .setup-source-row {
@@ -751,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:14pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 2:24pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1226,6 +1233,9 @@ function clearLaunchError() {
 
 function showSetup() {
   fillPosterForm(POSTER_CONFIG);
+  // Move focus into the setup screen so the remote works there (otherwise it
+  // stays on the hidden gear button underneath)
+  setTimeout(() => document.querySelector('#setup .btn-launch')?.focus(), 50);
   clearTimeout(autoLaunchTimer);   // don't auto-launch out from under the setup screen
   const cfg = state.config;
   document.getElementById('ks-ip').value = cfg.ksIP || '';
@@ -2653,9 +2663,79 @@ function showToast(msg) {
 }
 
 // ═══════════════════════════════════════
+// REMOTE NAVIGATION ON THE SETUP SCREEN
+// ═══════════════════════════════════════
+// The TV browser doesn't move between controls with the D-pad on its own, so
+// arrows move focus here: Up/Down to the nearest control in the row above or
+// below, Left/Right along the row. The page scrolls to keep focus in view.
+function setupFocusables() {
+  return [...document.querySelectorAll('#setup button, #setup input, #setup select, #setup textarea')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+}
+
+function moveSetupFocus(dir) {
+  const list = setupFocusables();
+  if (!list.length) return;
+  const cur = document.activeElement;
+  if (!list.includes(cur)) { list[0].focus(); list[0].scrollIntoView({ block: 'center' }); return; }
+
+  const r  = cur.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const boxes = list.filter(el => el !== cur).map(el => ({ el, b: el.getBoundingClientRect() }));
+  let target = null;
+
+  if (dir === 'down' || dir === 'up') {
+    const cands = dir === 'down'
+      ? boxes.filter(x => x.b.top >= r.bottom - 2)
+      : boxes.filter(x => x.b.bottom <= r.top + 2);
+    if (cands.length) {
+      // the nearest row in that direction, then the control closest horizontally
+      const rowTop = dir === 'down'
+        ? Math.min(...cands.map(x => x.b.top))
+        : Math.max(...cands.map(x => x.b.top));
+      const row = cands.filter(x => Math.abs(x.b.top - rowTop) < 12);
+      row.sort((a, b) => Math.abs(a.b.left + a.b.width / 2 - cx) - Math.abs(b.b.left + b.b.width / 2 - cx));
+      target = row[0]?.el;
+    }
+  } else {
+    const sameRow = boxes.filter(x => Math.abs(x.b.top - r.top) < r.height / 2);
+    const cands = dir === 'right'
+      ? sameRow.filter(x => x.b.left >= r.right - 2).sort((a, b) => a.b.left - b.b.left)
+      : sameRow.filter(x => x.b.right <= r.left + 2).sort((a, b) => b.b.left - a.b.left);
+    target = cands[0]?.el;
+    if (!target) {   // end of the row: continue to the next/previous control
+      const i = list.indexOf(cur) + (dir === 'right' ? 1 : -1);
+      target = list[Math.max(0, Math.min(list.length - 1, i))];
+    }
+  }
+  if (target) {
+    target.focus();
+    target.scrollIntoView({ block: 'center' });
+  } else if (dir === 'up') {
+    document.getElementById('setup').scrollTop = 0;
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('setup').classList.contains('hidden')) return;
+  const dirs = { ArrowDown: 'down', ArrowUp: 'up', ArrowRight: 'right', ArrowLeft: 'left' };
+  const dir = dirs[e.key];
+  if (!dir) return;
+  const a = document.activeElement;
+  const typing = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && a.type !== 'checkbox'));
+  if (typing && (dir === 'left' || dir === 'right')) return;   // let Left/Right move the text cursor
+  e.preventDefault();
+  e.stopPropagation();
+  moveSetupFocus(dir);
+}, true);
+
+// ═══════════════════════════════════════
 // KEYBOARD
 // ═══════════════════════════════════════
 document.addEventListener('keydown', e => {
+  // Typing in a setup field: letters are text, not shortcuts
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
   if (e.key === 'Escape') closeTrailer();
   if (e.key === 't' || e.key === 'T') openTrailer();
   if (e.key === 's' || e.key === 'S') showSetup();
@@ -2746,6 +2826,7 @@ function launchDemo() {
 window.addEventListener('DOMContentLoaded', () => {
   loadConfig();
   fillPosterForm(POSTER_CONFIG);
+  document.querySelector('#setup .btn-launch')?.focus();
   document.getElementById('app').style.display = 'none';
   // Go straight to the posters. Add ?setup=1 to the URL to stay on the setup
   // screen instead; the gear button and the S key still open it any time.
