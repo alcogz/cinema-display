@@ -212,36 +212,36 @@
     pointer-events: none;
   }
 
-  /* ─── TOP BAR: times + banner ─── */
+  /* ─── TOP BAR: Now Playing marquee, showtimes underneath ─── */
   #np-topbar {
     position: relative; z-index: 10; flex-shrink: 0;
-    width: 100%; display: flex; align-items: center; justify-content: space-between;
-    padding: clamp(6px,1.2vmin,14px) clamp(12px,3vmax,36px);
-    gap: 8px;
+    width: 100%; box-sizing: border-box;
+    padding: 2.4vmin 2vmin 1.2vmin;
   }
-  .np-time-block {
-    display: flex; flex-direction: column; align-items: center;
-    flex-shrink: 0; min-width: clamp(60px,10vmax,100px);
+  #np-showtimes {
+    display: flex; align-items: center; justify-content: center; gap: 5vmin;
   }
-  .np-time-label {
-    font-size: clamp(7px,0.85vmax,10px); letter-spacing: 0.28em; text-transform: uppercase;
-    color: var(--gold-dim); margin-bottom: 2px;
+  .np-show { display: flex; flex-direction: column; align-items: center; gap: 0.5vmin; min-width: 28vmin; }
+  .np-show-label {
+    font-family: 'Rajdhani', sans-serif; font-weight: 500;
+    font-size: 2.2vmin; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--gold-dim);
   }
+  .np-show-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 5.4vmin; font-weight: 400; line-height: 1; color: var(--cream);
+  }
+  .np-show-sep { width: 1px; height: 6.5vmin; background: rgba(201,168,76,0.35); }
   .np-time-value {
     font-family: 'Cormorant Garamond', serif;
     font-size: clamp(14px,2vmax,22px); font-weight: 300; color: var(--cream);
   }
   #np-banner-wrap {
-    flex: 1; display: flex; justify-content: center; align-items: center;
+    display: flex; flex-direction: column; align-items: stretch; gap: 1.8vmin;
     opacity: 0; transform: translateY(-8px);
     transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1);
   }
   #np-banner-wrap.visible { opacity: 1; transform: none; }
-  #np-banner-img {
-    width: 100%; max-width: clamp(160px,55%,400px);
-    height: auto; display: block;
-    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.9));
-  }
 
   /* ─── POSTER — fills middle ─── */
   #poster-area {
@@ -722,7 +722,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:14pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 1:20pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -838,13 +838,13 @@
   <div id="screensaver">
     <div id="ss-banner">
       <div class="mq chasing" id="ss-marquee" role="img" aria-label="Coming Soon">
-        <div class="mq-row" id="mq-top"></div>
+        <div class="mq-row mq-top"></div>
         <div class="mq-mid">
-          <div class="mq-col" id="mq-left"></div>
+          <div class="mq-col mq-left"></div>
           <div class="mq-board"><span class="mq-text" id="mq-text">COMING SOON</span></div>
-          <div class="mq-col" id="mq-right"></div>
+          <div class="mq-col mq-right"></div>
         </div>
-        <div class="mq-row" id="mq-bottom"></div>
+        <div class="mq-row mq-bottom"></div>
       </div>
     </div>
     <div id="ss-poster-wrap">
@@ -877,18 +877,29 @@
     <div id="ss-progress"><div id="ss-progress-fill"></div></div>
   </div>
 
-  <!-- Top bar: start time | NOW PLAYING banner | end time -->
+  <!-- Top bar: NOW PLAYING marquee, start/end times underneath -->
   <div id="np-topbar">
-    <div class="np-time-block" id="np-time-left">
-      <span class="np-time-label">Start Time</span>
-      <span class="np-time-value" id="time-start">—</span>
-    </div>
     <div id="np-banner-wrap">
-      <img id="np-banner-img" src="https://raw.githubusercontent.com/alcogz/cinema-display/main/now-playing.png" alt="Now Playing">
-    </div>
-    <div class="np-time-block" id="np-time-right">
-      <span class="np-time-label">End Time</span>
-      <span class="np-time-value" id="time-end">—</span>
+      <div class="mq chasing" id="np-marquee" role="img" aria-label="Now Playing">
+        <div class="mq-row mq-top"></div>
+        <div class="mq-mid">
+          <div class="mq-col mq-left"></div>
+          <div class="mq-board"><span class="mq-text">NOW PLAYING</span></div>
+          <div class="mq-col mq-right"></div>
+        </div>
+        <div class="mq-row mq-bottom"></div>
+      </div>
+      <div id="np-showtimes">
+        <div class="np-show">
+          <span class="np-show-label">Start Time</span>
+          <span class="np-show-value" id="time-start">—</span>
+        </div>
+        <div class="np-show-sep"></div>
+        <div class="np-show">
+          <span class="np-show-label">End Time</span>
+          <span class="np-show-value" id="time-end">—</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1005,18 +1016,20 @@ const BANNER_IMAGES = {
 
 // Marquee bulbs: every third bulb shares a timing group (b1/b2/b3), so the
 // lights appear to chase around the frame
-(function buildMarquee() {
-  const fill = (id, n, offset, reverse) => {
-    const el = document.getElementById(id);
+// Fills every .mq sign on the page (Coming Soon and Now Playing)
+(function buildMarquees() {
+  const fill = (el, n, offset, reverse) => {
     if (!el) return;
     const bulbs = Array.from({ length: n }, (_, i) =>
       `<span class="mq-bulb b${((i + offset) % 3) + 1}"></span>`);
     el.innerHTML = (reverse ? bulbs.reverse() : bulbs).join('');
   };
-  fill('mq-top', 34, 0, false);
-  fill('mq-right', 5, 1, false);
-  fill('mq-bottom', 34, 1, true);
-  fill('mq-left', 5, 2, true);
+  document.querySelectorAll('.mq').forEach(m => {
+    fill(m.querySelector('.mq-top'), 34, 0, false);
+    fill(m.querySelector('.mq-right'), 5, 1, false);
+    fill(m.querySelector('.mq-bottom'), 34, 1, true);
+    fill(m.querySelector('.mq-left'), 5, 2, true);
+  });
 })();
 
 const BANNER_TEXT = { 'coming-soon': 'COMING SOON', 'now-playing': 'NOW PLAYING' };
