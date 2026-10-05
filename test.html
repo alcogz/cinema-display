@@ -14,7 +14,7 @@
   #holder { position: absolute; top: 50%; left: 50%; width: 960px; height: 540px; transform: translate(-50%, -50%); }
   #holder.small { width: 426px; height: 240px; }
   #holder.rotated { transform: translate(-50%, -50%) rotate(90deg); }
-  #holder iframe { width: 100%; height: 100%; border: 0; }
+  #holder iframe, #holder video { width: 100%; height: 100%; border: 0; background: #000; }
   #out { padding: 10px 14px; background: #111; white-space: pre-wrap; max-height: 40vh; overflow: auto; font-size: 14px; }
 </style>
 </head>
@@ -24,6 +24,7 @@
     <button id="b-small">▶ Play small</button>
     <button id="b-flat">▶ Play flat</button>
     <button id="b-rot">▶ Play rotated</button>
+    <button id="b-mp4">▶ Play MP4 (no YouTube)</button>
     <button id="b-stop">■ Stop</button>
   </div>
   <div id="stage"><div id="holder"><div id="yt"></div></div></div>
@@ -89,10 +90,39 @@ function play(rotated, small) {
 }
 function stop() {
   if (player) { try { player.destroy(); } catch (e) {} player = null; }
+  clearInterval(mp4Timer);
+  const v = document.querySelector('#holder video');
+  if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
+  document.getElementById('holder').innerHTML = '<div id="yt"></div>';
+}
+
+// ── 3. Same TV, no YouTube player: a plain H.264 720p MP4 in a <video> tag ──
+// Logs stalls ("waiting") and dropped frames, which YouTube's iframe can't report.
+const MP4 = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+let mp4Timer = null;
+function playMp4() {
+  stop();
+  const holder = document.getElementById('holder');
+  holder.classList.remove('rotated', 'small');
+  holder.innerHTML = '<video autoplay muted playsinline></video>';
+  const v = holder.querySelector('video');
+  let mp4Stalls = 0, began = false;
+  const t0 = Date.now();
+  const t = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';
+  log('--- Playing MP4 (H.264, no YouTube) ---');
+  v.addEventListener('playing', () => { if (!began) { began = true; log(`${t()} playing — ${v.videoWidth}x${v.videoHeight}`); } });
+  v.addEventListener('waiting', () => { if (began) { mp4Stalls++; log(`${t()} STALL #${mp4Stalls}`); } });
+  v.addEventListener('error', () => log('MP4 error ' + (v.error && v.error.code)));
+  v.src = MP4;
+  mp4Timer = setInterval(() => {
+    const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
+    if (q && began) log(`${t()} frames ${q.totalVideoFrames}, dropped ${q.droppedVideoFrames}, stalls ${mp4Stalls}`);
+  }, 15000);
 }
 document.getElementById('b-small').onclick = () => play(false, true);
 document.getElementById('b-flat').onclick = () => play(false);
 document.getElementById('b-rot').onclick  = () => play(true);
+document.getElementById('b-mp4').onclick  = playMp4;
 document.getElementById('b-stop').onclick = stop;
 </script>
 </body>
