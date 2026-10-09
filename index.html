@@ -758,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 5, 2026 @ 3:38pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 9, 2026 @ 12:35pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1590,6 +1590,11 @@ const SS_TRAILERS = new URLSearchParams(location.search).get('trailers') !== '0'
 // Logged with trailer stats so the debug HUD shows which mode is active.
 const NO_ROTATE = !matchMedia('(orientation: landscape)').matches;
 
+// How long each poster stays on screen (milliseconds)
+const POSTER_BEFORE_TRAILER_MS = 15000;   // new poster shows this long, then its trailer plays
+const POSTER_AFTER_TRAILER_MS  = 15000;   // poster stays this long after its trailer ends
+const POSTER_NO_TRAILER_MS     = 15000;   // posters without a trailer (or trailers turned off)
+
 const ss = {
   movies: [],
   currentIdx: 0,
@@ -1605,7 +1610,7 @@ const ss = {
   _trailerTimeout: null,
   _posterDwellTimeout: null,
   _preloadTimeout: null,
-  POSTER_DURATION: SS_TRAILERS ? 5000 : 15000,   // ms to show poster before trailer starts
+  POSTER_DURATION: SS_TRAILERS ? POSTER_BEFORE_TRAILER_MS : POSTER_NO_TRAILER_MS,
   gen: 0,                  // bumps on every start/stop so stale slide chains exit
   lastSlideAt: 0,          // timestamp of last slide change (used by watchdog)
   failStreak: 0,           // consecutive posters that failed to load
@@ -2069,7 +2074,8 @@ async function startScreensaver() {
 }
 
 // ── Slide state machine ──────────────────────────────────────────────────────
-// Flow per slide: show poster (5s) → play trailer → hide player → dwell (5s) → advance
+// Flow per slide: show poster (POSTER_BEFORE_TRAILER_MS) → play trailer → hide player
+// → dwell (POSTER_AFTER_TRAILER_MS) → advance
 // All driven by plain setTimeouts — no blocking awaits that can mis-fire.
 
 function ssAdvance() {
@@ -2335,10 +2341,10 @@ function ssOnTrailerEnd() {
     if (ss.active) document.getElementById('ss-info').classList.add('show');
   }, 400);
 
-  // Dwell on poster 5s then rotate
+  // Dwell on the poster after its trailer, then rotate
   ss._posterDwellTimeout = setTimeout(() => {
     if (ss.active) ssAdvance();
-  }, 5000);
+  }, POSTER_AFTER_TRAILER_MS);
 }
 
 function ssStopTrailer() {
