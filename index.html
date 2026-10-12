@@ -758,11 +758,12 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 9, 2026 @ 12:35pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 12, 2026 @ 5:19pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
         <button class="btn-demo" onclick="launchDemo()" style="margin:0;">▷ &nbsp; Preview Demo</button>
+        <button class="btn-demo" onclick="youtubeSignIn()" style="margin:0;">▶ &nbsp; Sign in to YouTube</button>
         <button class="btn-launch" onclick="launch()" style="margin:0;">▶ &nbsp; Launch Cinema Display</button>
       </div>
     </div>
@@ -2423,6 +2424,15 @@ const PAGE_BOOTED_AT = Date.now();
 
 // Cache-busting reload: refreshes the browser's cached copy, then reopens the
 // page with a unique ?v= so neither Fully Kiosk nor the CDN can serve a stale one.
+// Opens Google's sign-in page for YouTube in this browser (Fully). Needed for
+// YouTube Premium (no ads on trailers) — the sign-in is per browser, so the
+// TV's own YouTube app sign-in doesn't count. Google only sends you on to a
+// YouTube page afterwards, so press Back on the remote to return here.
+function youtubeSignIn() {
+  location.href = 'https://accounts.google.com/ServiceLogin?service=youtube' +
+    '&continue=' + encodeURIComponent('https://www.youtube.com/');
+}
+
 function hardRefresh() {
   const u = new URL(location.href);
   u.searchParams.set('v', Date.now());
