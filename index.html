@@ -758,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 23, 2026 @ 9:06pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 23, 2026 @ 9:17pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1350,6 +1350,7 @@ async function poll() {
 const SOURCE_NAMES = { kaleidescape: 'Kaleidescape', appletv: 'Apple TV', shield: 'Shield', plex: 'Plex' };
 function setSourceLabel(source, app) {
   const device = SOURCE_NAMES[source] || source || '';
+  app = (app || '').split(':')[0].trim();   // "Shudder: Horror & Thrillers" → "Shudder"
   const label = app && app !== device ? `${device} · ${app}` : device;
   const el = document.getElementById('source-label');
   if (el && el.textContent !== label) el.textContent = label || '—';
@@ -1360,6 +1361,11 @@ function setSourceLabel(source, app) {
 async function pollOnce() {
   // Try Kaleidescape first
   let movie = await pollKaleidescape();
+  if (movie && movie.isAd) {
+    // Mid-movie ad break: leave the Now Playing screen as it is
+    if (!state.idle) { state._pollMisses = 0; return; }
+    movie = null;
+  }
   if (movie) {
     state._pollMisses = 0;
     document.getElementById('ks-live-dot').classList.remove('idle');
@@ -1417,10 +1423,21 @@ async function pollKaleidescape() {
     const cleanTitle = data.title.replace(/\\:/g, ':').replace(/[\\]+$/, '').trim();
     if (!cleanTitle) return null;
 
-    console.log('[KS] Returning movie:', cleanTitle, '| source:', data.source);
+    // Streaming apps often add the year: "Halloween (1978)" → title + year,
+    // so TMDB finds the right movie instead of a show with that name in it
+    let title = cleanTitle, year = data.year || '';
+    const ym = title.match(/^(.*\S)\s*\((\d{4})\)$/);
+    if (ym) { title = ym[1]; year = year || ym[2]; }
+
+    // Ad breaks (e.g. Shudder reports "Advertisement"): keep showing the movie
+    if (/^(advertisement|ad|ads|commercial|sponsored)$/i.test(title)) {
+      return { isAd: true, source: data.source || 'kaleidescape', app: data.app || '' };
+    }
+
+    console.log('[KS] Returning movie:', title, year, '| source:', data.source);
     return {
-      title:  cleanTitle,
-      year:   data.year || '',
+      title:  title,
+      year:   year,
       tmdbId: null,
       source: data.source || 'kaleidescape',
       app:    data.app || '',
