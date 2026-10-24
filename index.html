@@ -758,7 +758,7 @@
     <!-- Last updated + action buttons at top -->
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(201,168,76,0.12);">
       <div style="font-size:10px; letter-spacing:0.22em; color:#4a3a2a; text-transform:uppercase;">
-        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 12, 2026 @ 5:19pm</span>
+        Last Updated: <span id="build-stamp" style="color:#7a6a50;">October 23, 2026 @ 9:06pm</span>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-demo" onclick="hardRefresh()" style="margin:0;">⟳ &nbsp; Refresh App</button>
@@ -1038,14 +1038,12 @@
       </div>
       <div id="source-row">
         <div class="source-indicator">
-          <span class="dot" id="ks-live-dot"></span>
-          Kaleidescape
+          <span class="dot" id="source-dot"></span>
+          <span id="source-label">—</span>
         </div>
-        <div style="width:1px;height:10px;background:var(--border);"></div>
-        <div class="source-indicator">
-          <span class="dot idle" id="plex-live-dot"></span>
-          Plex
-        </div>
+        <!-- old per-device dots, still referenced by code; kept hidden -->
+        <span id="ks-live-dot" class="dot" style="display:none"></span>
+        <span id="plex-live-dot" class="dot idle" style="display:none"></span>
         <div style="margin-left:auto;">
           <span class="tc-label" style="font-size:7px;letter-spacing:0.2em;color:#5a4a30;text-transform:uppercase;">Elapsed</span>
           <span class="np-time-value" id="time-elapsed" style="font-size:14px;color:var(--gold);display:block;">—</span>
@@ -1348,6 +1346,17 @@ async function poll() {
   try { await pollOnce(); } finally { state._polling = false; }
 }
 
+// "Kaleidescape", "Apple TV · Prime Video", "Shield · Plex"…
+const SOURCE_NAMES = { kaleidescape: 'Kaleidescape', appletv: 'Apple TV', shield: 'Shield', plex: 'Plex' };
+function setSourceLabel(source, app) {
+  const device = SOURCE_NAMES[source] || source || '';
+  const label = app && app !== device ? `${device} · ${app}` : device;
+  const el = document.getElementById('source-label');
+  if (el && el.textContent !== label) el.textContent = label || '—';
+  const tag = document.getElementById('source-tag');
+  if (tag) tag.textContent = label;
+}
+
 async function pollOnce() {
   // Try Kaleidescape first
   let movie = await pollKaleidescape();
@@ -1355,6 +1364,7 @@ async function pollOnce() {
     state._pollMisses = 0;
     document.getElementById('ks-live-dot').classList.remove('idle');
     document.getElementById('plex-live-dot').classList.add('idle');
+    setSourceLabel(movie.source || 'kaleidescape', movie.app);
     handleNowPlaying(movie, movie.source || 'kaleidescape');
     return;
   }
@@ -1365,6 +1375,7 @@ async function pollOnce() {
   if (movie) {
     state._pollMisses = 0;
     document.getElementById('plex-live-dot').classList.remove('idle');
+    setSourceLabel('plex', '');
     handleNowPlaying(movie, 'plex');
     return;
   }
@@ -1412,6 +1423,7 @@ async function pollKaleidescape() {
       year:   data.year || '',
       tmdbId: null,
       source: data.source || 'kaleidescape',
+      app:    data.app || '',
     };
   } catch(e) {
     console.log('[KS] Bridge fetch error:', e.message);
@@ -2729,7 +2741,6 @@ function animateInfoOut() {
 }
 
 function animateInfoIn(d, source) {
-  document.getElementById('source-tag').textContent = source === 'kaleidescape' ? 'Kaleidescape' : 'Plex Media Server';
 
   // Title
   const titleEl = document.getElementById('movie-title');
@@ -2976,6 +2987,7 @@ function runDemo() {
   document.getElementById('ambient-bg').style.backgroundImage =
     `url(https://image.tmdb.org/t/p/w1280${demoMovie.backdropPath})`;
 
+  setSourceLabel('kaleidescape', '');
   animateInfoIn(demoMovie, 'kaleidescape');
   updateElapsed();
 
